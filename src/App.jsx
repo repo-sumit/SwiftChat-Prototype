@@ -68,7 +68,9 @@ function AppRoutes() {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-[#e8eaf6]">
       <div className={`relative h-full bg-white overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.15)] transition-all duration-300 ${
-        isAuth ? 'w-full md:max-w-[900px]' : 'w-full max-w-[420px]'
+        screen === 'home' ? 'w-full'
+        : isAuth ? 'w-full md:max-w-[900px]'
+        : 'w-full max-w-[420px]'
       }`}>
         {allIds.map(id => (
           <Screen key={id} id={id} current={screen} />
