@@ -1,15 +1,12 @@
 import React from 'react'
-import logoImg from '../assets/images/swiftchat-logo.png'
 
-/**
- * SwiftChat logo — uses the official brand PNG icon.
- */
+const LOGO_URL = 'https://i.ibb.co/TMKP4j6D/Group-130690.png'
+
 export default function Logo({ size = 36, showText = false, textColor = '#1A1F36' }) {
   return (
     <div className="flex items-center gap-2">
-      {/* PNG icon mark */}
       <img
-        src={logoImg}
+        src={LOGO_URL}
         alt="SwiftChat"
         width={size}
         height={size}
