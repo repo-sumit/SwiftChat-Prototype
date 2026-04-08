@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
-  Plus, Search, Sun, Moon, Upload, Paperclip, Send,
-  Download, X, Menu, ChevronDown, Monitor, Sparkles,
+  Plus, Search, Upload, Paperclip, Send,
+  Download, X, Menu, ChevronDown, Sparkles,
   CalendarCheck, BarChart3, ScanLine, Award, AlertTriangle,
   MessageSquare, FileText, UserRound, BookOpen, GraduationCap,
   TrendingUp, Building2, Map, Brain,
@@ -421,6 +421,74 @@ function buildLearningOutcomesArtifact() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// INLINE CHAT CARDS (rendered inside message bubbles)
+// ─────────────────────────────────────────────────────────────────────────────
+function buildInlineAttendanceHtml(grade) {
+  const students = STUDENTS[grade] || STUDENTS[8]
+  return `
+    <div style="margin-top:6px">
+      <div style="font-size:12px;color:#666;margin-bottom:8px">
+        <strong>${SCHOOL}</strong> — Grade ${grade} — ${TODAY}<br>
+        Tap a name to toggle Present / Absent
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px" id="att-grid">
+        ${students.map(s => {
+          const short = s.name.split(' ').map(w => w[0] + w.slice(1,5)).join(' ')
+          return `<div onclick="window._vskToggle(this)" data-n="${short}" data-status="present"
+            style="padding:8px 4px;border-radius:8px;text-align:center;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #C8E6C9;background:#E8F5E9;color:#2E7D32;user-select:none;transition:all .12s"
+          >✓ ${short}</div>`
+        }).join('')}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#666;margin-bottom:6px">
+        <span>Total: <strong>${students.length}</strong></span>
+        <span id="att-summary">Present: <strong style="color:#2E7D32">${students.length}</strong> · Absent: <strong style="color:#E53935">0</strong></span>
+      </div>
+    </div>`
+}
+
+function buildInlineAtRiskHtml() {
+  const students = AT_RISK_STUDENTS || []
+  const rows = students.map(s => {
+    const riskColor = s.risk === 'high' ? '#E53935' : '#FF8F00'
+    const riskBg = s.risk === 'high' ? '#FFEBEE' : '#FFF8E1'
+    return `<div style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #f3f4f6;gap:8px">
+      <div style="flex:1;font-size:12px"><strong>${s.name}</strong><br><span style="color:#999;font-size:10px">${s.reason||'Low attendance'}</span></div>
+      <span style="font-size:11px;color:#666">Att: <strong>${s.attendance}%</strong></span>
+      <span style="background:${riskBg};color:${riskColor};font-size:9px;font-weight:700;padding:2px 7px;border-radius:12px">${(s.risk||'').toUpperCase()}</span>
+    </div>`
+  }).join('')
+  const high = students.filter(s=>s.risk==='high').length
+  return `
+    <div style="margin-top:6px">
+      <div style="font-size:12px;color:#666;margin-bottom:6px"><strong>⚠️ ${students.length} students at risk</strong> (${high} high risk)</div>
+      <div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">${rows}</div>
+    </div>`
+}
+
+function buildInlineScholarshipHtml() {
+  const schemes = SCHOLARSHIP_DATA || []
+  return `
+    <div style="margin-top:6px">
+      ${schemes.map(s => {
+        const pct = Math.round(s.approved / s.eligible * 100)
+        const barColor = pct >= 80 ? '#4CAF50' : pct >= 60 ? '#FF9800' : '#E53935'
+        return `<div style="background:#E3F2FD;border:1px solid rgba(30,136,229,.2);border-radius:10px;padding:10px 12px;margin-bottom:6px">
+          <div style="font-size:11px;font-weight:700;color:#1E88E5;margin-bottom:6px">${s.name}</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(30,136,229,.1)">
+            <span>Eligible</span><strong>${s.eligible}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(30,136,229,.1)">
+            <span>Applied</span><strong>${s.applied}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0">
+            <span>Approved</span><strong style="color:${barColor}">${s.approved} (${pct}%)</strong>
+          </div>
+        </div>`
+      }).join('')}
+    </div>`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // QUICK ACTIONS  (trigger chat flows)
 // ─────────────────────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = {
@@ -477,16 +545,27 @@ const QUICK_ACTIONS = {
 // ─────────────────────────────────────────────────────────────────────────────
 const TASK_FLOWS = {
   attendance: {
-    triggers: ['attendance','mark attendance','mark','present','absent','task: attendance','task:attendance'],
+    triggers: ['attendance','mark attendance','mark','present','absent','task: attendance','task:attendance','haajri'],
     steps: [{ key:'grade', prompt:'Which grade?', opts:['3','5','6','8'] }],
-    done: 'Attendance marked! You can share or download the register from the panel.',
-    build: (ctx) => buildAttendanceArtifact(ctx),
+    inline: true,
+    done: (ctx) => `📋 Launching attendance for **Grade ${ctx.grade||8}** — ${TODAY}`,
+    buildInline: (ctx) => buildInlineAttendanceHtml(ctx.grade || '8'),
+    actions: [
+      { label: '✅ Submit Attendance', trigger: '_submit_att', variant: 'ok' },
+      { label: '📨 Notify parents', trigger: 'parent alert', variant: 'warn' },
+      { label: '📊 View dashboard', trigger: 'Task: dashboard', variant: 'primary' },
+    ],
   },
   at_risk: {
     triggers: ['at-risk','at risk','risk','task: at_risk','task:at_risk','dropout','struggling'],
     steps: [],
-    done: 'At-risk student list loaded. Consider sending parent alerts for high-risk students.',
-    build: () => buildAtRiskArtifact(),
+    inline: true,
+    done: () => '⚠️ Here are the at-risk students for your school:',
+    buildInline: () => buildInlineAtRiskHtml(),
+    actions: [
+      { label: '📨 Send parent alerts', trigger: 'parent alert', variant: 'err' },
+      { label: '📈 Attendance plan', trigger: 'Task: attendance', variant: 'primary' },
+    ],
   },
   lesson_plan: {
     triggers: ['lesson','lesson plan','lesson_plan','task: lesson_plan','task:lesson_plan','create lesson','make lesson'],
@@ -516,8 +595,13 @@ const TASK_FLOWS = {
   scholarship: {
     triggers: ['scholarship','dbt','ews','task: scholarship','task:scholarship','dbt status','dbt report','dbt disbursal'],
     steps: [],
-    done: 'Scholarship status loaded. View the panel for details.',
-    build: () => buildScholarshipArtifact(),
+    inline: true,
+    done: () => `🏅 Scholarship status for ${SCHOOL}:`,
+    buildInline: () => buildInlineScholarshipHtml(),
+    actions: [
+      { label: '📊 Full report', trigger: 'Task: dashboard', variant: 'primary' },
+      { label: '🌸 Namo Laxmi', trigger: 'Task: namo_laxmi', variant: 'primary' },
+    ],
   },
   namo_laxmi: {
     triggers: ['namo laxmi','namo_laxmi','task: namo_laxmi','task:namo_laxmi','scheme analytics'],
@@ -680,21 +764,54 @@ function TypingIndicator() {
   )
 }
 
-function MessageBubble({ msg, onChipClick }) {
+function MessageBubble({ msg, onChipClick, onAction }) {
   const isUser = msg.role === 'user'
+  const ACTION_COLORS = {
+    ok:   'border-[#4CAF50] text-[#4CAF50] active:bg-[#4CAF50]',
+    err:  'border-[#E53935] text-[#E53935] active:bg-[#E53935]',
+    warn: 'border-[#FF8F00] text-[#E65100] active:bg-[#FF8F00]',
+    primary: 'border-primary text-primary active:bg-primary',
+  }
   return (
     <div className={`flex gap-3 mb-4 ${isUser ? 'flex-row-reverse' : 'items-end'}`}>
       {!isUser && (
         <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0 self-end">V</div>
       )}
-      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[75%]`}>
-        <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed whitespace-pre-line ${
-          isUser
-            ? 'bg-primary text-white rounded-br-sm'
-            : 'bg-surface-secondary text-txt-primary rounded-bl-sm'
-        }`}>
-          {msg.text}
-        </div>
+      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} ${msg.html ? 'max-w-[90%] md:max-w-[80%]' : 'max-w-[75%]'}`}>
+        {/* Text bubble */}
+        {msg.text && (
+          <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed whitespace-pre-line ${
+            isUser
+              ? 'bg-primary text-white rounded-br-sm'
+              : 'bg-surface-secondary text-txt-primary rounded-bl-sm'
+          }`}>
+            {msg.text}
+          </div>
+        )}
+        {/* Inline HTML card (attendance grids, data tables, etc.) */}
+        {msg.html && (
+          <div
+            className="mt-1.5 bg-white border border-bdr-light rounded-2xl px-4 py-3 text-txt-primary"
+            dangerouslySetInnerHTML={{ __html: msg.html }}
+          />
+        )}
+        {/* Action buttons (colored, like the HTML reference) */}
+        {msg.actions?.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {msg.actions.map((a, i) => (
+              <button
+                key={i}
+                onClick={() => onAction ? onAction(a) : onChipClick(a.trigger)}
+                className={`px-3 py-1.5 rounded-full border-[1.5px] text-[12px] font-bold bg-white transition-colors active:text-white ${
+                  ACTION_COLORS[a.variant] || ACTION_COLORS.primary
+                }`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Plain chip options */}
         {msg.opts?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2.5">
             {msg.opts.map((opt, i) => (
@@ -927,7 +1044,6 @@ export default function SuperHomePage() {
   const [artifact, setArtifact]     = useState(null)
   const [activeSession, setSession] = useState('VSK 3.0 Demo Session')
   const [sidebarOpen, setSidebar]   = useState(false)
-  const [darkMode, setDark]         = useState(false)
   const [showBotDrop, setBotDrop]   = useState(false)
   const bottomRef = useRef(null)
 
@@ -941,12 +1057,40 @@ export default function SuperHomePage() {
     setActiveBot(newBots[0])
   }, [role])
 
-  const addBot = useCallback((text, opts = []) => {
+  // Window globals for interactive inline cards
+  useEffect(() => {
+    window._vskToggle = (el) => {
+      const isP = el.dataset.status === 'present'
+      el.dataset.status = isP ? 'absent' : 'present'
+      el.style.background = isP ? '#FFEBEE' : '#E8F5E9'
+      el.style.borderColor = isP ? '#FFCDD2' : '#C8E6C9'
+      el.style.color = isP ? '#E53935' : '#2E7D32'
+      el.textContent = (isP ? '✗ ' : '✓ ') + el.dataset.n
+      // Update summary
+      const grid = el.closest('[id]')?.parentElement
+      if (!grid) return
+      const all = grid.querySelectorAll('[data-status]')
+      const absent = [...all].filter(e => e.dataset.status === 'absent').length
+      const summary = grid.querySelector('#att-summary')
+      if (summary) summary.innerHTML = `Present: <strong style="color:#2E7D32">${all.length - absent}</strong> · Absent: <strong style="color:#E53935">${absent}</strong>`
+    }
+    window._vskSubmit = (btn) => {
+      btn.textContent = '✅ Submitted'
+      btn.style.background = '#4CAF50'
+      btn.style.borderColor = '#4CAF50'
+      btn.style.color = '#fff'
+      btn.style.pointerEvents = 'none'
+    }
+    return () => { delete window._vskToggle; delete window._vskSubmit }
+  }, [])
+
+  const addBot = useCallback((text, opts = [], { html, actions } = {}) => {
     setTyping(true)
+    const delay = Math.min(250 + (text||'').length * 2, 800) + Math.random() * 200
     setTimeout(() => {
       setTyping(false)
-      setMessages(prev => [...prev, { id: Date.now(), role:'bot', text, opts }])
-    }, 600 + Math.random() * 400)
+      setMessages(prev => [...prev, { id: Date.now(), role:'bot', text, opts, html: html||null, actions: actions||null }])
+    }, delay)
   }, [])
 
   const openArtifact = useCallback((af) => setArtifact(af), [])
@@ -967,9 +1111,16 @@ export default function SuperHomePage() {
         addBot(next.prompt, next.opts || [])
       } else {
         setCollect(null)
-        const af = flow.build(newCtx)
-        openArtifact(af)
-        addBot(flow.done)
+        if (flow.inline && flow.buildInline) {
+          const html = flow.buildInline(newCtx)
+          const doneText = typeof flow.done === 'function' ? flow.done(newCtx) : flow.done
+          addBot(doneText, [], { html, actions: flow.actions })
+        } else {
+          const af = flow.build(newCtx)
+          openArtifact(af)
+          const doneText = typeof flow.done === 'function' ? flow.done(newCtx) : flow.done
+          addBot(doneText)
+        }
       }
       return
     }
@@ -991,9 +1142,16 @@ export default function SuperHomePage() {
     if (taskId) {
       const flow = TASK_FLOWS[taskId]
       if (flow.steps.length === 0) {
-        const af = flow.build({})
-        openArtifact(af)
-        addBot(flow.done)
+        if (flow.inline && flow.buildInline) {
+          const html = flow.buildInline({})
+          const doneText = typeof flow.done === 'function' ? flow.done({}) : flow.done
+          addBot(doneText, [], { html, actions: flow.actions })
+        } else {
+          const af = flow.build({})
+          openArtifact(af)
+          const doneText = typeof flow.done === 'function' ? flow.done({}) : flow.done
+          addBot(doneText)
+        }
       } else {
         setCollect({ taskId, stepIdx: 0, ctx: {} })
         const first = flow.steps[0]
@@ -1074,7 +1232,7 @@ export default function SuperHomePage() {
   const hasMessages = messages.length > 0
 
   return (
-    <div className={`flex h-full overflow-hidden ${darkMode ? 'bg-[#121212]' : 'bg-white'}`}>
+    <div className="flex h-full overflow-hidden bg-white">
 
       {/* Sidebar */}
       {sidebarOpen && (
@@ -1132,12 +1290,6 @@ export default function SuperHomePage() {
 
           <div className="flex-1" />
 
-          <button
-            onClick={() => setDark(v => !v)}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-txt-secondary hover:bg-surface-secondary transition-colors"
-          >
-            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
           <button className="w-9 h-9 flex items-center justify-center rounded-lg text-txt-secondary hover:bg-surface-secondary transition-colors">
             <Upload size={16} />
           </button>
@@ -1154,7 +1306,26 @@ export default function SuperHomePage() {
               ) : (
                 <>
                   {messages.map(msg => (
-                    <MessageBubble key={msg.id} msg={msg} onChipClick={handleSend} />
+                    <MessageBubble
+                      key={msg.id}
+                      msg={msg}
+                      onChipClick={handleSend}
+                      onAction={(a) => {
+                        if (a.trigger === '_submit_att') {
+                          // Find and click the submit button in the DOM
+                          const btn = document.querySelector('#att-grid')?.parentElement?.querySelector('[data-status]')?.closest('div')?.parentElement
+                          window._vskSubmit?.(document.createElement('div')) // no-op visual
+                          addBot('✅ Attendance submitted successfully! Parent alerts queued for 5:00 PM.', [], {
+                            actions: [
+                              { label: '📊 View dashboard', trigger: 'Task: dashboard', variant: 'primary' },
+                              { label: '📨 Send alerts now', trigger: 'parent alert', variant: 'warn' },
+                            ]
+                          })
+                        } else {
+                          handleSend(a.trigger)
+                        }
+                      }}
+                    />
                   ))}
                   {typing && <TypingIndicator />}
                   <div ref={bottomRef} />
