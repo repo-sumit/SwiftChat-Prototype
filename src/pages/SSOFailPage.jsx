@@ -70,7 +70,7 @@ export default function SSOFailPage() {
         </div>
 
         {/* Circular countdown */}
-        <div className="flex flex-col items-center gap-2">
+        <div className="relative" style={{ width: 108, height: 108 }}>
           <svg width={108} height={108} viewBox="0 0 108 108">
             {/* Track */}
             <circle
@@ -91,8 +91,8 @@ export default function SSOFailPage() {
               style={{ transition: 'stroke-dasharray 1s linear' }}
             />
           </svg>
-          {/* Time overlay */}
-          <div className="absolute flex flex-col items-center" style={{ marginTop: -10 }}>
+          {/* Time overlay — centered inside circle */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span
               className="text-[22px] font-bold"
               style={{ color: '#7B96FF', fontFamily: 'Montserrat, sans-serif' }}
