@@ -20,15 +20,12 @@ function StateSheet({ onSelect, onClose }) {
         style={{ width: '72%', maxWidth: 320 }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Sheet header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-bdr">
           <span className="font-bold text-[15px] text-txt-primary">Select your state program</span>
           <button onClick={onClose} className="text-txt-tertiary active:text-txt-primary">
             <X size={18} />
           </button>
         </div>
-
-        {/* State list */}
         <div className="flex-1 overflow-y-auto">
           {STATES.map(state => (
             <button
@@ -45,14 +42,13 @@ function StateSheet({ onSelect, onClose }) {
   )
 }
 
-// ── SSO Portal (webview simulation) ───────────────────────────────────────
 export default function SSORedirectPage() {
-  const { navigate, goBack } = useApp()
+  const { navigate, goBack, ssoState, setSsoState } = useApp()
   const [stateId, setStateId]     = useState('')
   const [password, setPassword]   = useState('')
   const [captchaIn, setCaptchaIn] = useState('')
   const [showPw, setShowPw]       = useState(false)
-  const [selectedState, setSelectedState] = useState('Gujarat')
+  const [selectedState, setSelectedState] = useState(ssoState || 'Gujarat')
   const [showSheet, setShowSheet] = useState(false)
   const [captchaCode]             = useState('3X6E5')
 
@@ -62,10 +58,10 @@ export default function SSORedirectPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full bg-white overflow-hidden relative">
 
       {/* ── Browser chrome bar ── */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-bdr bg-white flex-shrink-0">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-bdr bg-[#F8FAFC] flex-shrink-0">
         <button
           onClick={goBack}
           className="w-8 h-8 flex items-center justify-center text-txt-secondary active:text-txt-primary rounded-full active:bg-surface-secondary"
@@ -74,10 +70,10 @@ export default function SSORedirectPage() {
         </button>
         <span className="text-[11px] font-bold text-txt-primary flex-shrink-0">Exit Portal</span>
 
-        <div className="flex-1 mx-2 flex items-center gap-1.5 bg-[#F4F6FA] rounded-md px-2 py-1.5 min-w-0">
+        <div className="flex-1 mx-2 flex items-center gap-1.5 bg-white rounded-lg border border-bdr px-2.5 py-1.5 min-w-0">
           <Lock size={11} className="text-ok flex-shrink-0" />
           <span className="text-[11px] text-txt-secondary truncate">
-            https://sso.education.{selectedState.toLowerCase()}.gov.in/auth/login
+            https://sso.education.{selectedState.toLowerCase().replace(' ', '')}.gov.in/auth/login
           </span>
         </div>
 
@@ -99,7 +95,6 @@ export default function SSORedirectPage() {
           <div className="text-[13px] font-bold text-white leading-tight">State Education Department</div>
           <div className="text-[10px] text-white/60">State | Ministry of Education</div>
         </div>
-        {/* State selector button */}
         <button
           onClick={() => setShowSheet(true)}
           className="flex items-center gap-1 bg-white/15 text-white text-[11px] font-bold rounded-full px-2.5 py-1 active:bg-white/25"
@@ -113,120 +108,129 @@ export default function SSORedirectPage() {
         <div className="h-full w-[65%] bg-gradient-to-r from-[#FF6D00] to-[#4CAF50]" />
       </div>
 
-      {/* ── Scrollable form area ── */}
+      {/* ── Scrollable body — centred form ── */}
       <div className="flex-1 overflow-y-auto">
         {/* Breadcrumb */}
         <div className="px-4 py-2 text-[11px] text-txt-tertiary border-b border-bdr-light">
-          Home &gt; Authentication &gt; <span className="text-primary font-semibold">SSO Login</span>
+          Home &gt; Authentication &gt;{' '}
+          <span className="text-primary font-semibold">SSO Login</span>
         </div>
 
-        <div className="px-4 py-5">
-          {/* Form card */}
-          <div className="bg-white rounded-xl border border-bdr shadow-card p-5">
-            <h2
-              className="text-[18px] font-bold text-txt-primary mb-1"
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
-            >
-              Unified Login Portal
-            </h2>
-            <p className="text-[12px] text-txt-secondary mb-5">
-              Sign in with your State Education ID
-            </p>
+        {/* Centred card wrapper — plain padding, no flex-1 inside scroll */}
+        <div className="flex justify-center px-4 py-6">
+          <div className="w-full max-w-[520px]">
 
-            {/* State ID field */}
-            <div className="mb-4">
-              <label className="text-[10px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
-                STUDENT / TEACHER ID <span className="text-danger">*</span>
-              </label>
-              <input
-                value={stateId}
-                onChange={e => setStateId(e.target.value)}
-                placeholder="STU_839201"
-                className="w-full px-3 py-3 rounded-lg border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
-              />
-            </div>
+            {/* Form card */}
+            <div className="bg-white rounded-2xl border border-bdr shadow-card p-6 md:p-8">
+              <h2
+                className="text-[20px] font-bold text-txt-primary mb-1"
+                style={{ fontFamily: 'Montserrat, sans-serif' }}
+              >
+                Unified Login Portal
+              </h2>
+              <p className="text-[13px] text-txt-secondary mb-6">
+                Sign in with your State Education ID to continue
+              </p>
 
-            {/* Password field */}
-            <div className="mb-4">
-              <label className="text-[10px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
-                PASSWORD <span className="text-danger">*</span>
-              </label>
-              <div className="relative">
+              {/* State ID */}
+              <div className="mb-4">
+                <label className="text-[11px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
+                  Student / Teacher ID <span className="text-danger">*</span>
+                </label>
                 <input
-                  type={showPw ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="edu@2026secure"
-                  className="w-full px-3 py-3 pr-10 rounded-lg border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
+                  value={stateId}
+                  onChange={e => setStateId(e.target.value)}
+                  placeholder="STU_839201"
+                  className="w-full px-4 py-3 rounded-xl border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
                 />
-                <button
-                  onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-txt-tertiary active:text-txt-secondary"
-                >
-                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
               </div>
-            </div>
 
-            {/* CAPTCHA */}
-            <div className="mb-4">
-              <label className="text-[10px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
-                CAPTCHA VERIFICATION <span className="text-danger">*</span>
-              </label>
-              <div className="flex gap-3 mb-2">
-                <div className="flex items-center px-4 py-2 rounded-lg border-2 border-dashed border-primary bg-primary-light select-none">
-                  <span
-                    className="text-[20px] font-bold text-primary tracking-[6px]"
-                    style={{ fontFamily: 'monospace', letterSpacing: '6px' }}
+              {/* Password */}
+              <div className="mb-4">
+                <label className="text-[11px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
+                  Password <span className="text-danger">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="edu@2026secure"
+                    className="w-full px-4 py-3 pr-10 rounded-xl border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
+                  />
+                  <button
+                    onClick={() => setShowPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-txt-tertiary active:text-txt-secondary"
                   >
-                    {captchaCode}
-                  </span>
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
-                <button className="flex items-center gap-1 text-[12px] text-primary font-semibold active:opacity-70">
-                  <RefreshCw size={13} /> Refresh
-                </button>
               </div>
-              <input
-                value={captchaIn}
-                onChange={e => setCaptchaIn(e.target.value.toUpperCase())}
-                placeholder={captchaCode}
-                className="w-full px-3 py-3 rounded-lg border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
-              />
+
+              {/* CAPTCHA */}
+              <div className="mb-6">
+                <label className="text-[11px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
+                  Captcha Verification <span className="text-danger">*</span>
+                </label>
+                <div className="flex gap-3 mb-2 items-center">
+                  <div className="flex items-center px-4 py-2 rounded-xl border-2 border-dashed border-primary bg-primary-light select-none">
+                    <span
+                      className="text-[20px] font-bold text-primary"
+                      style={{ fontFamily: 'monospace', letterSpacing: '6px' }}
+                    >
+                      {captchaCode}
+                    </span>
+                  </div>
+                  <button className="flex items-center gap-1.5 text-[12px] text-primary font-semibold active:opacity-70">
+                    <RefreshCw size={13} /> Refresh
+                  </button>
+                </div>
+                <input
+                  value={captchaIn}
+                  onChange={e => setCaptchaIn(e.target.value.toUpperCase())}
+                  placeholder={captchaCode}
+                  className="w-full px-4 py-3 rounded-xl border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
+                />
+              </div>
+
+              {/* Sign In */}
+              <button
+                onClick={handleSignIn}
+                disabled={!stateId || !password}
+                className="w-full py-3.5 rounded-xl font-bold text-[15px] text-white transition-all disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98]"
+                style={{
+                  background: '#1A3A5C',
+                  fontFamily: 'Montserrat, sans-serif',
+                  boxShadow: '0 4px 14px rgba(26,58,92,0.35)',
+                }}
+              >
+                Sign In
+              </button>
             </div>
 
-            {/* Sign In */}
-            <button
-              onClick={handleSignIn}
-              disabled={!stateId || !password}
-              className="w-full py-3.5 rounded-lg font-bold text-[15px] text-white transition-opacity disabled:opacity-40 disabled:pointer-events-none active:opacity-80"
-              style={{ background: '#1A3A5C', fontFamily: 'Montserrat, sans-serif' }}
-            >
-              Sign In
-            </button>
-          </div>
+            {/* Footer links */}
+            <div className="flex justify-between mt-3 px-1">
+              <span className="text-[12px] text-primary cursor-pointer active:underline">Forgot Password?</span>
+              <span className="text-[12px] text-primary cursor-pointer active:underline">Help / Support</span>
+            </div>
 
-          {/* Footer links */}
-          <div className="flex justify-between mt-3 px-1">
-            <span className="text-[12px] text-primary cursor-pointer active:underline">Forgot Password?</span>
-            <span className="text-[12px] text-primary cursor-pointer active:underline">Help / Support</span>
+            {/* Dev shortcut */}
+            <p className="text-center mt-4">
+              <span
+                className="text-[11px] text-danger cursor-pointer font-semibold"
+                onClick={() => navigate('sso_fail', true)}
+              >
+                Simulate server unavailable →
+              </span>
+            </p>
           </div>
-
-          {/* Simulate fail */}
-          <p className="text-center mt-4">
-            <span
-              className="text-[11px] text-danger cursor-pointer font-semibold"
-              onClick={() => navigate('sso_fail', true)}
-            >
-              Simulate server unavailable →
-            </span>
-          </p>
         </div>
       </div>
 
       {/* State selection drawer */}
       {showSheet && (
         <StateSheet
-          onSelect={s => { setSelectedState(s); setShowSheet(false) }}
+          onSelect={s => { setSelectedState(s); setSsoState(s); setShowSheet(false) }}
           onClose={() => setShowSheet(false)}
         />
       )}

@@ -12,10 +12,8 @@ export default function SSOSuccessPage() {
   }, [navigate, setRole])
 
   return (
-    <div
-      className="flex-1 flex flex-col items-center justify-center px-8 text-center"
-      style={{ background: '#12122A' }}
-    >
+    <div className="flex-1 flex items-center justify-center" style={{ background: '#12122A' }}>
+    <div className="w-full max-w-[420px] flex flex-col items-center justify-center px-8 text-center py-16">
       {/* Outer glow ring */}
       <div
         className="relative flex items-center justify-center mb-8"
@@ -67,6 +65,7 @@ export default function SSOSuccessPage() {
           Redirecting to home…
         </span>
       </div>
+    </div>
     </div>
   )
 }

@@ -21,13 +21,14 @@ export default function SplashPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-between bg-white px-6 py-10 overflow-hidden">
+    <div className="flex-1 flex flex-col items-center justify-center bg-white overflow-y-auto">
+    <div className="w-full max-w-[480px] flex flex-col items-center justify-between min-h-full px-6 py-10 gap-10">
 
       {/* Top: logo + heading */}
       <div className="flex flex-col items-center text-center w-full">
         {/* App icon */}
-        <div className="w-16 h-16 rounded-[18px] bg-primary flex items-center justify-center mb-5 shadow-modal">
-          <Logo size={32} />
+        <div className="mb-5">
+          <Logo size={64} />
         </div>
 
         <h1
@@ -89,6 +90,7 @@ export default function SplashPage() {
           Continue
         </button>
       </div>
+    </div>
     </div>
   )
 }

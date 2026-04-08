@@ -11,6 +11,7 @@ export function AppProvider({ children }) {
   const [call, setCall] = useState(null)
   const [canvasOpen, setCanvasOpen] = useState(false)
   const [canvasContext, setCanvasContext] = useState(null)
+  const [ssoState, setSsoState] = useState('Gujarat')
   const toastTimer = useRef(null)
 
   const navigate = useCallback((id, replace = false) => {
@@ -64,6 +65,7 @@ export function AppProvider({ children }) {
       toast, showToast,
       call, openCall, endCall,
       canvasOpen, canvasContext, openCanvas, closeCanvas,
+      ssoState, setSsoState,
       signOut,
     }}>
       {children}

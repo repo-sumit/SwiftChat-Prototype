@@ -26,10 +26,8 @@ export default function SSOFailPage() {
   const dash = (pct / 100) * C
 
   return (
-    <div
-      className="flex-1 flex flex-col overflow-hidden"
-      style={{ background: '#12122A' }}
-    >
+    <div className="flex-1 flex items-center justify-center" style={{ background: '#12122A' }}>
+    <div className="w-full max-w-[420px] flex flex-col overflow-hidden h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-4 flex-shrink-0">
         <button
@@ -130,6 +128,7 @@ export default function SSOFailPage() {
           Retry now
         </button>
       </div>
+    </div>
     </div>
   )
 }

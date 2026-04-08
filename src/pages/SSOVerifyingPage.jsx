@@ -32,10 +32,8 @@ export default function SSOVerifyingPage() {
   }, [navigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div
-      className="flex-1 flex flex-col items-center justify-between px-6 py-10"
-      style={{ background: '#12122A' }}
-    >
+    <div className="flex-1 flex flex-col items-center justify-center" style={{ background: '#12122A' }}>
+    <div className="w-full max-w-[420px] flex flex-col items-center justify-between px-6 py-10 h-full">
       {/* Top spacer */}
       <div />
 
@@ -85,6 +83,7 @@ export default function SSOVerifyingPage() {
       >
         Redirecting securely via state portal
       </p>
+    </div>
     </div>
   )
 }

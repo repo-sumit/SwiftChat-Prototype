@@ -205,7 +205,7 @@ function LoginPanel({ navigate }) {
 
         {/* Desktop: primary button */}
         <button
-          onClick={() => navigate('sso_redirect')}
+          onClick={() => navigate('select_state')}
           className="w-full bg-primary text-white font-bold text-[15px] py-3.5 rounded-pill shadow-modal active:opacity-80 transition-opacity mb-5"
           style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.2px' }}
         >
@@ -253,7 +253,7 @@ function LoginPanel({ navigate }) {
         }}
       >
         <button
-          onClick={() => navigate('sso_redirect')}
+          onClick={() => navigate('select_state')}
           style={{
             background: '#386AF6',
             borderRadius: 50,
@@ -334,7 +334,7 @@ export default function LoginPage() {
     // Mobile: flex-col (hero on top, panel below)
     // Desktop: flex-row (left illustrated panel + right form panel)
     <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-      {/* Desktop left panel */}
+      {/* Desktop left panel — fills remaining space */}
       <DesktopPanel slide={slide} total={SLIDES.length} />
 
       {/* Mobile hero (hidden on desktop) */}
@@ -343,10 +343,10 @@ export default function LoginPage() {
         <LoginPanel navigate={navigate} />
       </div>
 
-      {/* Desktop right panel */}
+      {/* Desktop right panel — fixed comfortable width */}
       <div
-        className="hidden md:flex flex-col justify-center"
-        style={{ width: 380, flexShrink: 0, background: '#fff' }}
+        className="hidden md:flex flex-col justify-center flex-shrink-0"
+        style={{ width: 'clamp(340px, 38%, 460px)', background: '#fff', borderLeft: '1px solid #E8EDF5' }}
       >
         <LoginPanel navigate={navigate} />
       </div>

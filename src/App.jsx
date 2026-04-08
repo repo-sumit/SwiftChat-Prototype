@@ -6,6 +6,7 @@ import CanvasPanel from './canvas/CanvasPanel'
 
 import SplashPage        from './pages/SplashPage'
 import LoginPage         from './pages/LoginPage'
+import SelectStatePage   from './pages/SelectStatePage'
 import SSORedirectPage   from './pages/SSORedirectPage'
 import SSOVerifyingPage  from './pages/SSOVerifyingPage'
 import SSOSuccessPage    from './pages/SSOSuccessPage'
@@ -20,12 +21,13 @@ import NamoLaxmiPage     from './pages/NamoLaxmiPage'
 
 // Every chat bot ID that uses the generic ChatPage
 const CHAT_IDS = ['swift','xamta','att','ews','tmsg','catt','cschol','dbt','datt','warroom','parentbot']
-const AUTH_SCREENS = new Set(['splash','login','sso_redirect','sso_verifying','sso_ok','sso_fail','phone_entry','phone_otp'])
+const AUTH_SCREENS = new Set(['splash','login','select_state','sso_redirect','sso_verifying','sso_ok','sso_fail','phone_entry','phone_otp'])
 
 // Static routes: id → component
 const STATIC_ROUTES = {
   splash:        <SplashPage />,
   login:         <LoginPage />,
+  select_state:  <SelectStatePage />,
   sso_redirect:  <SSORedirectPage />,
   sso_verifying: <SSOVerifyingPage />,
   sso_ok:        <SSOSuccessPage />,
@@ -65,12 +67,14 @@ function AppRoutes() {
     ...CHAT_IDS.map(id => 'chat_' + id),
   ]
 
+  const isFullScreen = isAuth || screen === 'home'
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-[#e8eaf6]">
-      <div className={`relative h-full bg-white overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.15)] transition-all duration-300 ${
-        screen === 'home' ? 'w-full'
-        : isAuth ? 'w-full md:max-w-[900px]'
-        : 'w-full max-w-[420px]'
+    <div className={`fixed inset-0 flex items-center justify-center ${isFullScreen ? '' : 'bg-[#e8eaf6]'}`}>
+      <div className={`relative h-full overflow-hidden transition-all duration-300 bg-white ${
+        isFullScreen
+          ? 'w-full'
+          : 'w-full max-w-[420px] shadow-[0_0_40px_rgba(0,0,0,0.15)]'
       }`}>
         {allIds.map(id => (
           <Screen key={id} id={id} current={screen} />
