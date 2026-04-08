@@ -561,8 +561,10 @@ function detectTask(text) {
 }
 
 function greetingReply(text, botName) {
-  const q = text.toLowerCase()
-  if (q.includes('namaste') || q.includes('नमस्ते') || q.includes('hello') || q.includes('hi') || q === 'start demo') {
+  const q = text.toLowerCase().trim()
+  const words = q.split(/\s+/)
+  if (words.includes('hi') || words.includes('hello') || words.includes('namaste') ||
+      q.includes('नमस्ते') || q === 'start demo') {
     return `Namaste! I'm ${botName}. How can I help you today?`
   }
   return null

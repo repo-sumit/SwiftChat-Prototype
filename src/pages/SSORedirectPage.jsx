@@ -8,7 +8,6 @@ const STATES = [
   'Karnataka', 'Tamil Nadu', 'West Bengal', 'Rajasthan', 'Madhya Pradesh',
 ]
 
-// ── State Selection sheet ──────────────────────────────────────────────────
 function StateSheet({ onSelect, onClose }) {
   return (
     <div
@@ -45,20 +44,47 @@ function StateSheet({ onSelect, onClose }) {
 
 export default function SSORedirectPage() {
   const { navigate, goBack, ssoState, setSsoState, setRole } = useApp()
-  const [stateId, setStateId]     = useState('')
-  const [password, setPassword]   = useState('')
+  const [stateId, setStateId] = useState('')
+  const [password, setPassword] = useState('')
   const [captchaIn, setCaptchaIn] = useState('')
-  const [showPw, setShowPw]       = useState(false)
+  const [error, setError] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const [selectedState, setSelectedState] = useState(ssoState || 'Gujarat')
   const [showSheet, setShowSheet] = useState(false)
-  const [showDemo, setShowDemo]   = useState(false)
-  const [captchaCode]             = useState('3X6E5')
+  const [showDemo, setShowDemo] = useState(false)
+  const [captchaCode] = useState('3X6E5')
+
+  const clearError = () => setError('')
 
   const handleSignIn = () => {
-    if (!stateId || !password) return
-    // Match demo credentials → auto-set role
-    const match = DEMO_SSO_USERS.find(u => u.stateId === stateId && u.password === password)
-    if (match) setRole(match.role)
+    const normalizedStateId = stateId.trim().toUpperCase()
+    const normalizedPassword = password.trim()
+    const normalizedCaptcha = captchaIn.trim().toUpperCase()
+
+    if (!normalizedStateId || !normalizedPassword || !normalizedCaptcha) {
+      setError('Enter your State ID, password, and captcha to continue.')
+      return
+    }
+
+    if (normalizedCaptcha !== captchaCode) {
+      setRole(null)
+      setError('Captcha does not match. Please try again.')
+      return
+    }
+
+    const match = DEMO_SSO_USERS.find(
+      user => user.stateId.toUpperCase() === normalizedStateId && user.password === normalizedPassword
+    )
+
+    if (!match) {
+      setRole(null)
+      setError('State ID or password is incorrect. Try one of the demo credentials below.')
+      return
+    }
+
+    setStateId(normalizedStateId)
+    clearError()
+    setRole(match.role)
     navigate('sso_verifying', true)
   }
 
@@ -66,13 +92,12 @@ export default function SSORedirectPage() {
     setStateId(user.stateId)
     setPassword(user.password)
     setCaptchaIn(captchaCode)
+    clearError()
     setShowDemo(false)
   }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white overflow-hidden relative">
-
-      {/* ── Browser chrome bar ── */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-bdr bg-[#F8FAFC] flex-shrink-0">
         <button
           onClick={goBack}
@@ -85,7 +110,7 @@ export default function SSORedirectPage() {
         <div className="flex-1 mx-2 flex items-center gap-1.5 bg-white rounded-lg border border-bdr px-2.5 py-1.5 min-w-0">
           <Lock size={11} className="text-ok flex-shrink-0" />
           <span className="text-[11px] text-txt-secondary truncate">
-            https://sso.education.{selectedState.toLowerCase().replace(' ', '')}.gov.in/auth/login
+            https://sso.education.{selectedState.toLowerCase().replace(/\s+/g, '')}.gov.in/auth/login
           </span>
         </div>
 
@@ -94,7 +119,6 @@ export default function SSORedirectPage() {
         </button>
       </div>
 
-      {/* ── Govt header block ── */}
       <div
         className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
         style={{ background: 'linear-gradient(135deg, #1A3A5C 0%, #1E4D7A 100%)' }}
@@ -115,24 +139,17 @@ export default function SSORedirectPage() {
         </button>
       </div>
 
-      {/* Progress bar */}
       <div className="h-1 bg-bdr flex-shrink-0">
         <div className="h-full w-[65%] bg-gradient-to-r from-[#FF6D00] to-[#4CAF50]" />
       </div>
 
-      {/* ── Scrollable body — centred form ── */}
       <div className="flex-1 overflow-y-auto">
-        {/* Breadcrumb */}
         <div className="px-4 py-2 text-[11px] text-txt-tertiary border-b border-bdr-light">
-          Home &gt; Authentication &gt;{' '}
-          <span className="text-primary font-semibold">SSO Login</span>
+          Home &gt; Authentication &gt; <span className="text-primary font-semibold">SSO Login</span>
         </div>
 
-        {/* Centred card wrapper — plain padding, no flex-1 inside scroll */}
         <div className="flex justify-center px-4 py-6">
           <div className="w-full max-w-[520px]">
-
-            {/* Form card */}
             <div className="bg-white rounded-2xl border border-bdr shadow-card p-6 md:p-8">
               <h2
                 className="text-[20px] font-bold text-txt-primary mb-1"
@@ -144,20 +161,18 @@ export default function SSORedirectPage() {
                 Sign in with your State Education ID to continue
               </p>
 
-              {/* State ID */}
               <div className="mb-4">
                 <label className="text-[11px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
                   Student / Teacher ID <span className="text-danger">*</span>
                 </label>
                 <input
                   value={stateId}
-                  onChange={e => setStateId(e.target.value)}
-                  placeholder="STU_839201"
+                  onChange={e => { setStateId(e.target.value.toUpperCase()); clearError() }}
+                  placeholder="TCH1001"
                   className="w-full px-4 py-3 rounded-xl border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
                 />
               </div>
 
-              {/* Password */}
               <div className="mb-4">
                 <label className="text-[11px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
                   Password <span className="text-danger">*</span>
@@ -166,8 +181,8 @@ export default function SSORedirectPage() {
                   <input
                     type={showPw ? 'text' : 'password'}
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="edu@2026secure"
+                    onChange={e => { setPassword(e.target.value); clearError() }}
+                    placeholder="Demo@123"
                     className="w-full px-4 py-3 pr-10 rounded-xl border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
                   />
                   <button
@@ -179,7 +194,6 @@ export default function SSORedirectPage() {
                 </div>
               </div>
 
-              {/* CAPTCHA */}
               <div className="mb-6">
                 <label className="text-[11px] font-bold text-txt-secondary uppercase tracking-[0.6px] mb-1.5 block">
                   Captcha Verification <span className="text-danger">*</span>
@@ -199,16 +213,21 @@ export default function SSORedirectPage() {
                 </div>
                 <input
                   value={captchaIn}
-                  onChange={e => setCaptchaIn(e.target.value.toUpperCase())}
+                  onChange={e => { setCaptchaIn(e.target.value.toUpperCase()); clearError() }}
                   placeholder={captchaCode}
                   className="w-full px-4 py-3 rounded-xl border-[1.5px] border-bdr text-[14px] text-txt-primary bg-white outline-none focus:border-primary transition-colors"
                 />
               </div>
 
-              {/* Sign In */}
+              {error && (
+                <p className="mb-4 text-[12px] font-medium text-danger">
+                  {error}
+                </p>
+              )}
+
               <button
                 onClick={handleSignIn}
-                disabled={!stateId || !password}
+                disabled={!stateId || !password || !captchaIn}
                 className="w-full py-3.5 rounded-xl font-bold text-[15px] text-white transition-all disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98]"
                 style={{
                   background: '#1A3A5C',
@@ -220,13 +239,11 @@ export default function SSORedirectPage() {
               </button>
             </div>
 
-            {/* Footer links */}
             <div className="flex justify-between mt-3 px-1">
               <span className="text-[12px] text-primary cursor-pointer active:underline">Forgot Password?</span>
               <span className="text-[12px] text-primary cursor-pointer active:underline">Help / Support</span>
             </div>
 
-            {/* Demo credentials */}
             <div className="mt-4">
               <button
                 onClick={() => setShowDemo(v => !v)}
@@ -236,19 +253,21 @@ export default function SSORedirectPage() {
               </button>
               {showDemo && (
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  {DEMO_SSO_USERS.map(u => (
+                  {DEMO_SSO_USERS.map(user => (
                     <button
-                      key={u.stateId}
-                      onClick={() => fillDemo(u)}
+                      key={user.stateId}
+                      onClick={() => fillDemo(user)}
                       className="flex items-center gap-2 px-3 py-2 rounded-xl border border-bdr bg-white hover:bg-primary-light transition-colors text-left"
                     >
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
-                        style={{ background: u.color }}>
-                        {u.initials}
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+                        style={{ background: user.color }}
+                      >
+                        {user.initials}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold text-txt-primary truncate">{u.name}</p>
-                        <p className="text-[10px] text-txt-tertiary">{u.badge}</p>
+                        <p className="text-[11px] font-bold text-txt-primary truncate">{user.name}</p>
+                        <p className="text-[10px] text-txt-tertiary">{user.badge}</p>
                       </div>
                     </button>
                   ))}
@@ -256,23 +275,25 @@ export default function SSORedirectPage() {
               )}
             </div>
 
-            {/* Dev shortcut */}
             <p className="text-center mt-3">
               <span
                 className="text-[11px] text-danger cursor-pointer font-semibold"
                 onClick={() => navigate('sso_fail', true)}
               >
-                Simulate server unavailable →
+                Simulate server unavailable -&gt;
               </span>
             </p>
           </div>
         </div>
       </div>
 
-      {/* State selection drawer */}
       {showSheet && (
         <StateSheet
-          onSelect={s => { setSelectedState(s); setSsoState(s); setShowSheet(false) }}
+          onSelect={state => {
+            setSelectedState(state)
+            setSsoState(state)
+            setShowSheet(false)
+          }}
           onClose={() => setShowSheet(false)}
         />
       )}

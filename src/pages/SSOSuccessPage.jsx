@@ -3,13 +3,13 @@ import { useApp } from '../context/AppContext'
 import { Check } from 'lucide-react'
 
 export default function SSOSuccessPage() {
-  const { navigate, setRole } = useApp()
+  const { navigate } = useApp()
 
   useEffect(() => {
-    setRole('teacher')
+    // Role is already set in SSORedirectPage — do NOT override it here
     const t = setTimeout(() => navigate('home', true), 3000)
     return () => clearTimeout(t)
-  }, [navigate, setRole])
+  }, [navigate])
 
   return (
     <div className="flex-1 flex items-center justify-center" style={{ background: '#12122A' }}>
