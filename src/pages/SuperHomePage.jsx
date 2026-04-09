@@ -722,14 +722,38 @@ function detectTask(text) {
   return null
 }
 
-function greetingReply(text, botName) {
+// Time-aware greeting
+const HOUR = new Date().getHours()
+const TIME_GREET = HOUR < 12 ? 'Good morning' : HOUR < 17 ? 'Good afternoon' : 'Good evening'
+
+function greetingReply(text, _botName, role, profile) {
   const q = text.toLowerCase().trim()
   const words = q.split(/\s+/)
-  if (words.includes('hi') || words.includes('hello') || words.includes('namaste') ||
-      q.includes('नमस्ते') || q === 'start demo') {
-    return `Namaste! I'm ${botName}. How can I help you today?`
+  if (!(words.includes('hi') || words.includes('hello') || words.includes('namaste') ||
+      q.includes('नमस्ते') || q === 'start demo' || words.includes('hey'))) return null
+
+  const name = profile?.name?.split(' ')[0] || 'there'
+  const alerts = []
+  if (role === 'teacher' || role === 'principal') {
+    const risk = AT_RISK_STUDENTS?.filter(s => s.risk === 'high')?.length || 0
+    if (risk > 0) alerts.push(`⚠️ ${risk} high-risk students need attention`)
+    const pending = NAMO_LAXMI_APPS?.filter(a => a.status === 'pending')?.length || 0
+    if (pending > 0) alerts.push(`📋 ${pending} Namo Laxmi applications pending review`)
   }
-  return null
+  if (role === 'deo') alerts.push('📊 2 schools below 75% attendance threshold')
+  if (role === 'state_secretary') alerts.push(`🏛️ ${STATE_SUMMARY?.districtCount || 33} districts reporting — 3 need attention`)
+  if (role === 'parent') alerts.push(`📚 ${profile?.childName || 'Your child'}'s attendance: 74% this month`)
+
+  const alertText = alerts.length ? '\n\n' + alerts.join('\n') : ''
+  const roleHint = {
+    teacher: "I can mark attendance, create lesson plans, scan XAMTA sheets, track scholarships, and more.",
+    principal: "I can show school dashboards, at-risk alerts, teacher reports, and parent outreach tools.",
+    deo: "I can provide district analytics, block-wise reports, war room alerts, and intervention insights.",
+    state_secretary: "I can show statewide KPIs, district drilldowns, scheme analytics, and policy insights.",
+    parent: `I can show ${profile?.childName || "your child"}'s attendance, grades, scholarship status, and connect you with teachers.`,
+  }
+
+  return `${TIME_GREET}, ${name}! 👋${alertText}\n\n${roleHint[role] || roleHint.teacher}\n\nWhat would you like to do?`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -999,88 +1023,118 @@ function MessageBubble({ msg, onChipClick, onAction, onCardClick }) {
   )
 }
 
-function WelcomeScreen({ botName, onChip, role }) {
+// Personalized stats per role
+function getRoleAlerts(role, profile) {
+  const risk = AT_RISK_STUDENTS?.filter(s => s.risk === 'high')?.length || 0
+  const pending = NAMO_LAXMI_APPS?.filter(a => a.status === 'pending')?.length || 0
+  if (role === 'teacher') return [
+    { icon: '👥', label: 'Students', value: `${STUDENTS[8]?.length || 30}`, color: '#386AF6' },
+    { icon: '⚠️', label: 'At Risk', value: `${risk}`, color: '#DC2626' },
+    { icon: '📋', label: 'NL Pending', value: `${pending}`, color: '#D97706' },
+    { icon: '📊', label: 'Avg Score', value: `${PERF_DATA[8]?.math || 74}%`, color: '#16A34A' },
+  ]
+  if (role === 'principal') return [
+    { icon: '🏫', label: 'Total Students', value: '342', color: '#386AF6' },
+    { icon: '📅', label: 'Today Att.', value: '88%', color: '#16A34A' },
+    { icon: '⚠️', label: 'Alerts', value: `${risk}`, color: '#DC2626' },
+    { icon: '🏅', label: 'Scholarships', value: '82%', color: '#7C3AED' },
+  ]
+  if (role === 'deo') return [
+    { icon: '🏫', label: 'Schools', value: '412', color: '#386AF6' },
+    { icon: '👥', label: 'Students', value: '24.8K', color: '#7C3AED' },
+    { icon: '📅', label: 'Avg Att.', value: '84%', color: '#16A34A' },
+    { icon: '⚠️', label: 'Flagged', value: '142', color: '#DC2626' },
+  ]
+  if (role === 'state_secretary') return [
+    { icon: '🏛️', label: 'Districts', value: '33', color: '#386AF6' },
+    { icon: '🏫', label: 'Schools', value: '33.2K', color: '#7C3AED' },
+    { icon: '👥', label: 'Students', value: '8.2M', color: '#059669' },
+    { icon: '📅', label: 'Avg Att.', value: '85.4%', color: '#16A34A' },
+  ]
+  return [ // parent
+    { icon: '📅', label: 'Attendance', value: '74%', color: '#D97706' },
+    { icon: '📊', label: 'Avg Score', value: '68%', color: '#386AF6' },
+    { icon: '🏅', label: 'Scholarship', value: 'Pending', color: '#7C3AED' },
+    { icon: '📖', label: 'Grade', value: profile?.childGrade || 'Class 8', color: '#16A34A' },
+  ]
+}
+
+function WelcomeScreen({ botName, onChip, role, profile }) {
   const suggestions = ROLE_SUGGESTIONS[role] || ROLE_SUGGESTIONS.teacher || []
   const actions = QUICK_ACTIONS[role] || QUICK_ACTIONS.teacher
-  const starters = ['Start Demo', 'नमस्ते']
+  const alerts = getRoleAlerts(role, profile)
+  const firstName = profile?.name?.split(' ')[0] || 'there'
+  const roleLabel = ROLE_META[role]?.badge || 'User'
 
   return (
-    <div className="flex-1 flex flex-col items-center px-4 md:px-8 py-8 overflow-y-auto">
+    <div className="flex-1 flex flex-col items-center px-4 md:px-8 py-6 overflow-y-auto">
 
-      {/* Hero */}
-      <div className="flex flex-col items-center text-center mb-8 mt-4">
-        <div className="mb-3">
-          <img
-            src="https://i.ibb.co/Xr1jqvd4/Logo-VSK-PNG.png"
-            alt="VSK Gujarat"
-            width={72}
-            height={72}
-            style={{ objectFit: 'contain', display: 'block' }}
-            draggable={false}
-          />
+      {/* Personalized hero */}
+      <div className="w-full max-w-[700px] mb-6 mt-2">
+        <div className="flex items-center gap-4 mb-5">
+          <div className="mb-0">
+            <img src="https://i.ibb.co/Xr1jqvd4/Logo-VSK-PNG.png" alt="VSK" width={48} height={48}
+              style={{ objectFit: 'contain', display: 'block' }} draggable={false} />
+          </div>
+          <div>
+            <h1 className="text-[22px] font-bold text-txt-primary" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              {TIME_GREET}, {firstName}!
+            </h1>
+            <p className="text-[13px] text-txt-secondary" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              {roleLabel} · VSK 3.0 Gujarat
+            </p>
+          </div>
         </div>
-        <h1 className="text-[26px] font-bold text-txt-primary mb-1.5">VSK 3.0</h1>
-        <p className="text-[13px] text-txt-secondary max-w-[320px]">
-          Gujarat's AI-Powered Education Governance Platform
-        </p>
-        <div className="flex flex-wrap gap-2 justify-center mt-4">
-          {starters.map(s => (
-            <button
-              key={s}
-              onClick={() => onChip(s)}
-              className="px-4 py-1.5 rounded-full border border-bdr text-[13px] text-txt-primary bg-white hover:bg-surface-secondary transition-colors"
-            >
-              {s}
-            </button>
+
+        {/* Today's stats strip */}
+        <div className="grid grid-cols-4 gap-2 mb-6">
+          {alerts.map((a, i) => (
+            <div key={i} className="bg-white border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-center hover:shadow-sm transition-shadow">
+              <div className="text-[16px] mb-0.5">{a.icon}</div>
+              <div className="text-[15px] font-bold" style={{ color: a.color, fontFamily: 'Montserrat, sans-serif' }}>{a.value}</div>
+              <div className="text-[9px] font-semibold text-txt-tertiary tracking-wide">{a.label.toUpperCase()}</div>
+            </div>
           ))}
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="w-full max-w-[700px]">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={14} className="text-primary" />
-            <span className="text-[13px] font-bold text-txt-primary">Quick Actions</span>
-          </div>
+        <div className="flex items-center gap-1.5 mb-3">
+          <Sparkles size={14} className="text-primary" />
+          <span className="text-[13px] font-bold text-txt-primary" style={{ fontFamily: 'Montserrat, sans-serif' }}>Quick Actions</span>
         </div>
 
         <div className="grid grid-cols-4 gap-2.5 mb-6">
           {actions.map((item, i) => {
             const Icon = item.icon
             return (
-              <button
-                key={i}
-                onClick={() => onChip(item.trigger)}
-                className="flex flex-col items-center justify-center gap-2 py-4 px-2 rounded-2xl border border-bdr-light active:scale-95 transition-all duration-150 hover:shadow-card"
-                style={{ background: item.bg }}
-              >
+              <button key={i} onClick={() => onChip(item.trigger)}
+                className="flex flex-col items-center justify-center gap-2 py-4 px-2 rounded-2xl border border-[#E2E8F0] active:scale-95 transition-all duration-150 hover:shadow-md"
+                style={{ background: item.bg }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: item.fg + '22' }}>
                   <Icon size={20} color={item.fg} strokeWidth={1.8} />
                 </div>
-                <span className="text-[11px] font-semibold text-txt-primary text-center leading-tight whitespace-pre-line">
-                  {item.label}
-                </span>
+                <span className="text-[11px] font-semibold text-txt-primary text-center leading-tight whitespace-pre-line"
+                  style={{ fontFamily: 'Montserrat, sans-serif' }}>{item.label}</span>
               </button>
             )
           })}
         </div>
 
-        {/* Suggested prompts */}
+        {/* Suggested prompts — LLM style */}
         {suggestions.length > 0 && (
           <div>
             <div className="flex items-center gap-1.5 mb-3">
               <MessageSquare size={13} className="text-txt-tertiary" />
-              <span className="text-[12px] font-bold text-txt-secondary">Try asking...</span>
+              <span className="text-[12px] font-bold text-txt-secondary" style={{ fontFamily: 'Montserrat, sans-serif' }}>Try asking me...</span>
             </div>
-            <div className="flex flex-col gap-2">
-              {suggestions.slice(0, 4).map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => onChip(s)}
-                  className="text-left px-4 py-2.5 rounded-xl border border-bdr-light text-[13px] text-txt-secondary bg-white hover:bg-surface-secondary hover:text-txt-primary transition-colors"
-                >
-                  {s}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {suggestions.slice(0, 6).map((s, i) => (
+                <button key={i} onClick={() => onChip(s)}
+                  className="text-left px-4 py-3 rounded-xl border border-[#E2E8F0] text-[13px] text-txt-secondary bg-white hover:bg-[#F5F7FA] hover:border-primary/30 hover:text-txt-primary transition-all"
+                  style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  <span className="text-primary mr-1.5">→</span> {s}
                 </button>
               ))}
             </div>
@@ -1601,7 +1655,7 @@ export default function SuperHomePage() {
     }
 
     // ── Greeting ─────────────────────────────────────────────────────────
-    const gr = greetingReply(text, activeBot)
+    const gr = greetingReply(text, activeBot, role, userProfile)
     if (gr) { addBot(gr); return }
 
     // ── Bot switch ────────────────────────────────────────────────────────
@@ -1637,10 +1691,61 @@ export default function SuperHomePage() {
       return
     }
 
-    // ── Contextual shortcuts ──────────────────────────────────────────────
+    // ── LLM-style natural language understanding ───────────────────────
     const q = text.toLowerCase()
+    const has = (...kw) => kw.some(k => q.includes(k))
+    const firstName = userProfile?.name?.split(' ')[0] || ''
 
-    if (q.includes('xamta') || q.includes('scan')) {
+    // Conversational acknowledgments (random prefix)
+    const ack = ['Sure!', 'On it!', 'Great question!', 'Absolutely!', 'Of course!', 'Let me help with that.', 'Right away!'][Math.floor(Math.random() * 7)]
+
+    // ── Thank you / polite ─────────────────────────────────────────────
+    if (has('thank','thanks','thx','dhanyavaad')) {
+      addBot(`You're welcome${firstName ? `, ${firstName}` : ''}! 😊 Is there anything else I can help you with?`,
+        ['Mark attendance','Show dashboard','At-risk students'])
+      return
+    }
+
+    // ── Daily brief / today / what to do ────────────────────────────────
+    if (has('daily brief','what should i do','today','my day','morning brief','summary')) {
+      const risk = AT_RISK_STUDENTS?.filter(s => s.risk === 'high')?.length || 0
+      const pending = NAMO_LAXMI_APPS?.filter(a => a.status === 'pending')?.length || 0
+      const briefs = {
+        teacher: `📋 **Your Daily Brief — ${TODAY}**\n\n📅 Attendance not yet marked for today\n⚠️ ${risk} high-risk students need attention\n📋 ${pending} Namo Laxmi applications pending\n📊 Class 8 average: ${PERF_DATA[8]?.math || 74}% (Math)\n\nWhat would you like to tackle first?`,
+        principal: `📋 **School Daily Brief — ${TODAY}**\n\n🏫 School attendance: 88.3% (342 students)\n⚠️ ${risk} students at high risk across school\n📋 ${pending} Namo Laxmi pending approvals\n👩‍🏫 2 teachers yet to mark attendance\n\nWhat would you like to review?`,
+        deo: `📋 **District Brief — ${TODAY}**\n\n🏫 412 schools reporting (98% submission)\n📅 District attendance: 84.2%\n⚠️ 142 schools below 75% threshold\n🔴 3 anomalies flagged for review\n\nWhere should we start?`,
+        state_secretary: `📋 **State Command Brief — ${TODAY}**\n\n🏛️ 33 districts · 33,248 schools\n👥 82.4 lakh students enrolled\n📅 State attendance: 85.4%\n⚠️ 3 districts below 80% threshold\n📊 Namo Laxmi: 79.8% disbursement rate\n\nWhat needs your attention?`,
+        parent: `📋 **${userProfile?.childName || 'Your Child'}'s Update — ${TODAY}**\n\n📅 Attendance this month: 74% (⚠️ below 80% target)\n📊 Last test score: 68% (Science)\n🏅 Namo Laxmi: Application pending\n📖 Homework due: Math Ex. 7.3\n\nWhat would you like to check?`,
+      }
+      addBot(briefs[role] || briefs.teacher, ['Mark attendance','At-risk students','Namo Laxmi','Show dashboard'])
+      return
+    }
+
+    // ── How are students / how is school ────────────────────────────────
+    if (has('how are','how is my','how\'s my','status of','doing')) {
+      if (has('student','class','kids','children','child','ravi')) {
+        handleSend('Task: class_performance'); return
+      }
+      if (has('school')) { handleSend('Task: dashboard'); return }
+      if (has('district')) { handleSend('Task: district_dashboard'); return }
+    }
+
+    // ── Who was absent / absent today ───────────────────────────────────
+    if (has('who was absent','absent today','absent student','who is absent','missing')) {
+      handleSend('Task: attendance'); return
+    }
+
+    // ── Any problems / alerts / issues ──────────────────────────────────
+    if (has('problem','alert','issue','concern','anomaly','war room','flagged')) {
+      const risk = AT_RISK_STUDENTS?.filter(s => s.risk === 'high')?.length || 0
+      addBot(`${ack} I found some items that need attention:\n\n🔴 **${risk} high-risk students** — chronic absence or low scores\n⚠️ **3 anomalies detected** — Daskroi below 75% threshold\n📋 **2 pending** Namo Laxmi applications need review\n\nWhich would you like to look at first?`,
+        ['At-risk students','Namo Laxmi','School dashboard','War room alerts'],
+        { progress: ['Scanning alerts...', 'Checking anomalies...'] })
+      return
+    }
+
+    // ── XAMTA / scan ────────────────────────────────────────────────────
+    if (has('xamta','scan','answer sheet','omr')) {
       const isMobile = window.innerWidth < 768
       const xamtaHtml = `
         <div style="margin-top:4px">
@@ -1658,7 +1763,7 @@ export default function SuperHomePage() {
           <input type="file" id="xamta-upload" accept="image/*,.pdf" style="display:none" onchange="window._vskXamtaFile?.(this)" />
           <div style="font-size:10px;color:#999">Or enter marks manually using the form below</div>
         </div>`
-      addBot('📷 XAMTA Assessment Scanner ready.', [], {
+      addBot(`${ack} XAMTA Scanner is ready.`, [], {
         html: xamtaHtml,
         actions: [
           { label: '📝 Enter marks by form', trigger: '_xamta_form', variant: 'primary' },
@@ -1668,47 +1773,63 @@ export default function SuperHomePage() {
       })
       return
     }
-    if (q.includes('parent alert') || q.includes('parent connect') || q.includes('notify parent')) {
-      addBot('📨 Parent alert system ready. Which class should receive the alert?',
-        ['Class 6-A','Class 6-B','All classes'])
-      return
-    }
-    if (q.includes('anomaly') || q.includes('war room')) {
-      addBot('🔴 3 anomalies detected:\n• Daskroi: 72.1% attendance (below 75% threshold)\n• 142 schools flagged for follow-up\n• 2 data submission gaps\nWould you like the full dashboard?',
-        ['Task: district_dashboard','Task: state_dashboard','Export report'])
-      return
-    }
-    if (q.includes('student data') || q.includes('new enrollment') || q.includes('update records')) {
-      addBot('📋 Student data entry ready. What would you like to update?',
-        ['New enrollment','Update records','Scheme eligibility'])
-      return
-    }
-    if (q.includes('remediation') || q.includes('remedial')) {
-      addBot('🔧 Remediation plan generator ready. Which subject needs intervention?',
-        ['Mathematics','Science','Gujarati'])
-      return
-    }
-    if (q.includes('quiz') || q.includes('assessment')) {
-      addBot('📝 Quiz builder ready. Which subject and grade?',
-        ['Math - Grade 5','Science - Grade 6','Gujarati - Grade 8'])
-      return
-    }
-    if (q.includes('brc') || q.includes('inspection') || q.includes('visit')) {
-      addBot('📋 BRC/CRC visit checklist ready. Would you like to generate an inspection report?',
-        ['Generate checklist','Log visit notes','View previous visits'])
-      return
-    }
-    if (q.includes('policy') || q.includes('policy advisor')) {
-      addBot('📜 Policy Advisor ready. I can help analyze education schemes, compliance requirements, or draft policy briefs. What do you need?',
-        ['Scheme compliance','Draft policy brief','Regulatory update'])
-      return
-    }
-    if (q.includes('message teacher') || q.includes('contact teacher')) {
-      addBot(`📩 Message sent to ${SCHOOL_INFO?.name || 'the school'} teacher. You'll receive a reply within 24 hours.`)
+
+    // ── Parent alerts / notify ──────────────────────────────────────────
+    if (has('parent alert','parent connect','notify parent','send alert','whatsapp','sms')) {
+      addBot(`${ack} I'll help you send parent notifications.\n\nWhich class should receive the alert?`,
+        ['Class 6','Class 8','All classes','Only absent students\' parents'])
       return
     }
 
-    // ── Fallback ──────────────────────────────────────────────────────────
+    // ── Remediation / intervention ──────────────────────────────────────
+    if (has('remediation','remedial','intervention','struggling','weak','improve')) {
+      addBot(`${ack} Let me build a remediation plan.\n\nI can create targeted worksheets and activities for struggling students. Which subject needs intervention?`,
+        ['Mathematics','Science','Gujarati','All subjects'])
+      return
+    }
+
+    // ── Quiz / assessment builder ───────────────────────────────────────
+    if (has('quiz','test','assessment','exam','question paper','worksheet')) {
+      addBot(`${ack} Quiz Builder ready! 📝\n\nI can create MCQs, short answers, or mixed-format assessments aligned to GCERT learning outcomes.\n\nWhich subject and grade?`,
+        ['Math - Grade 5','Science - Grade 6','Gujarati - Grade 8','Custom quiz'])
+      return
+    }
+
+    // ── BRC / inspection ────────────────────────────────────────────────
+    if (has('brc','crc','inspection','visit','monitoring','field')) {
+      addBot(`${ack} BRC/CRC visit tools ready.\n\nI can help generate inspection checklists, log visit observations, or review past visit reports.`,
+        ['Generate checklist','Log visit notes','View previous visits','Schedule next visit'])
+      return
+    }
+
+    // ── Policy / compliance ─────────────────────────────────────────────
+    if (has('policy','compliance','regulation','rte','guideline','circular')) {
+      addBot(`${ack} Policy Advisor activated. 📜\n\nI can analyze education schemes, check compliance requirements, draft policy briefs, or review recent government circulars.\n\nWhat do you need?`,
+        ['Scheme compliance','Draft policy brief','RTE guidelines','Recent circulars'])
+      return
+    }
+
+    // ── Message teacher / contact ───────────────────────────────────────
+    if (has('message teacher','contact teacher','talk to teacher','call teacher')) {
+      addBot(`📩 Message sent to ${SCHOOL_INFO?.name || 'the school'} teacher. You'll receive a reply within 24 hours.\n\nIs there anything specific you'd like me to include in the message?`)
+      return
+    }
+
+    // ── Student lookup ──────────────────────────────────────────────────
+    if (has('student','enrollment','enroll','register','data entry')) {
+      addBot(`${ack} Student data tools ready.\n\nI can help with new enrollments, record updates, or scheme eligibility checks.`,
+        ['New enrollment','Update records','Scheme eligibility','Search student'])
+      return
+    }
+
+    // ── Homework / assignment ───────────────────────────────────────────
+    if (has('homework','assignment','classwork','home work')) {
+      addBot(`📖 Here are the pending assignments:\n\n• **Math Ex. 7.3** (Q1-5) — Due tomorrow\n• **Science diagram** — Photosynthesis — Due Friday\n• **Gujarati essay** — My School — Due next week\n\nWould you like to create a new assignment?`,
+        ['Create assignment','View submissions','Send reminder to parents'])
+      return
+    }
+
+    // ── Anything else — smart fallback ──────────────────────────────────
     const fallbackOpts = {
       teacher:         ['Mark attendance','Lesson plan','At-risk students','XAMTA scan','Namo Laxmi','Scholarship status','Generate report','Class performance'],
       principal:       ['School dashboard','Attendance summary','At-risk students','Scholarship status','Generate report','War room'],
@@ -1716,11 +1837,16 @@ export default function SuperHomePage() {
       state_secretary: ['State dashboard','District drilldown','Namo Laxmi','Scholarship status','Learning outcomes','Dropout risk'],
       parent:          ['My child attendance','Scholarship status','Download report','Message teacher'],
     }
-    addBot(
-      "I can help you with multiple tasks. Tap any option below, or type your request:",
-      fallbackOpts[role] || fallbackOpts.teacher
-    )
-  }, [collectState, activeBot, bots, addBot, openArtifact, role])
+
+    const smartFallbacks = [
+      `I'm not sure I understood "${text}" — but I can help with a lot! Here are some things I can do for you:`,
+      `Hmm, I didn't quite catch that. ${firstName ? `${firstName}, h` : 'H'}ere's what I can help with:`,
+      `I'd love to help! I didn't find a match for "${text}", but try one of these:`,
+      `Let me suggest some options — just tap one or describe what you need in more detail:`,
+    ]
+    addBot(smartFallbacks[Math.floor(Math.random() * smartFallbacks.length)],
+      fallbackOpts[role] || fallbackOpts.teacher)
+  }, [collectState, activeBot, bots, addBot, openArtifact, role, userProfile])
 
   // ── Design Tool handler (Canva / Adobe) ──────────────────────────────────
   const handleDesignTool = useCallback((text, tool) => {
@@ -2015,7 +2141,7 @@ export default function SuperHomePage() {
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <div className="flex-1 overflow-y-auto px-4 pt-4">
               {!hasMessages ? (
-                <WelcomeScreen botName={activeBot} onChip={handleSend} role={role} />
+                <WelcomeScreen botName={activeBot} onChip={handleSend} role={role} profile={userProfile} />
               ) : (
                 <>
                   {messages.map(msg => (
