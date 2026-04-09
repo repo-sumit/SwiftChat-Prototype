@@ -488,6 +488,70 @@ function buildInlineScholarshipHtml() {
     </div>`
 }
 
+function buildInlineNamoLaxmiHtml() {
+  const apps = NAMO_LAXMI_APPS || []
+  const statusIcon = s => ({ approved:'✅', pending:'⏳', rejected:'❌' })[s] || '❓'
+  const statusColor = s => ({ approved:'#16a34a', pending:'#d97706', rejected:'#dc2626' })[s] || '#666'
+  const statusBg = s => ({ approved:'#dcfce7', pending:'#fef3c7', rejected:'#fee2e2' })[s] || '#f3f4f6'
+  const docIcon = ok => ok ? '✅' : '❌'
+  const approved = apps.filter(a=>a.status==='approved').length
+  const pending = apps.filter(a=>a.status==='pending').length
+  const rejected = apps.filter(a=>a.status==='rejected').length
+
+  const cards = apps.map((a, idx) => `
+    <div style="border:1px solid #e5e7eb;border-radius:12px;margin-bottom:8px;overflow:hidden">
+      <div style="display:flex;align-items:center;padding:10px 12px;gap:8px;cursor:pointer" onclick="window._vskToggleNL?.(${idx})">
+        <div style="width:32px;height:32px;border-radius:50%;background:${statusBg(a.status)};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${statusIcon(a.status)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#1a1f36">${a.studentName}</div>
+          <div style="font-size:10px;color:#666">Grade ${a.grade}-${a.section} · ${a.appId}</div>
+        </div>
+        <span style="background:${statusBg(a.status)};color:${statusColor(a.status)};font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;text-transform:capitalize">${a.status}</span>
+        <span style="font-size:12px;color:#999" id="nl-arrow-${idx}">▼</span>
+      </div>
+      <div id="nl-detail-${idx}" style="display:none;padding:0 12px 12px;border-top:1px solid #f0f0f0">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;margin-top:8px">
+          <div><span style="color:#999">Father:</span> <strong>${a.fatherName}</strong></div>
+          <div><span style="color:#999">Mother:</span> <strong>${a.motherName}</strong></div>
+          <div><span style="color:#999">DOB:</span> ${a.dob}</div>
+          <div><span style="color:#999">Phone:</span> ${a.phone}</div>
+          <div><span style="color:#999">Student Aadhaar:</span> ${a.studentAadhaar}</div>
+          <div><span style="color:#999">Mother Aadhaar:</span> ${a.motherAadhaar}</div>
+          <div><span style="color:#999">Bank A/C:</span> ${a.bankAcc}</div>
+          <div><span style="color:#999">IFSC:</span> ${a.ifsc}</div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;font-weight:700;color:#374151">Documents:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;font-size:10px">
+          <span style="background:#f8fafc;padding:2px 6px;border-radius:6px">${docIcon(a.docs?.aadhaar)} Aadhaar</span>
+          <span style="background:#f8fafc;padding:2px 6px;border-radius:6px">${docIcon(a.docs?.pan)} PAN</span>
+          <span style="background:#f8fafc;padding:2px 6px;border-radius:6px">${docIcon(a.docs?.income)} Income Cert</span>
+          <span style="background:#f8fafc;padding:2px 6px;border-radius:6px">${docIcon(a.docs?.lc)} LC</span>
+          <span style="background:#f8fafc;padding:2px 6px;border-radius:6px">${docIcon(a.docs?.passbook)} Passbook</span>
+        </div>
+        ${a.reason ? `<div style="margin-top:6px;font-size:10px;color:#dc2626;background:#fee2e2;padding:4px 8px;border-radius:6px">⚠️ ${a.reason}</div>` : ''}
+        ${a.status === 'rejected' || a.status === 'pending' ? `
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button onclick="window._vskNLAction?.('edit',${idx})" style="flex:1;padding:6px;border:1.5px solid #386AF6;color:#386AF6;background:#fff;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">✏️ Edit Form</button>
+            <button onclick="window._vskNLAction?.('resubmit',${idx})" style="flex:1;padding:6px;border:1.5px solid #16a34a;color:#16a34a;background:#fff;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🔄 Re-submit</button>
+          </div>` : `
+          <div style="margin-top:8px">
+            <button onclick="window._vskNLAction?.('view',${idx})" style="width:100%;padding:6px;border:1.5px solid #386AF6;color:#386AF6;background:#fff;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">👁️ View Full Form</button>
+          </div>`}
+      </div>
+    </div>`).join('')
+
+  return `
+    <div style="margin-top:6px">
+      <div style="display:flex;gap:6px;margin-bottom:10px;font-size:11px;text-align:center">
+        <div style="flex:1;background:#dcfce7;border-radius:8px;padding:6px"><div style="font-size:16px;font-weight:700;color:#16a34a">${approved}</div>Approved</div>
+        <div style="flex:1;background:#fef3c7;border-radius:8px;padding:6px"><div style="font-size:16px;font-weight:700;color:#d97706">${pending}</div>Pending</div>
+        <div style="flex:1;background:#fee2e2;border-radius:8px;padding:6px"><div style="font-size:16px;font-weight:700;color:#dc2626">${rejected}</div>Rejected</div>
+      </div>
+      <div style="font-size:11px;color:#666;margin-bottom:6px">Tap a student to view details, edit, or re-submit</div>
+      ${cards}
+    </div>`
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // QUICK ACTIONS  (trigger chat flows)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -610,28 +674,32 @@ const TASK_FLOWS = {
     ],
   },
   namo_laxmi: {
-    triggers: ['namo laxmi','namo_laxmi','task: namo_laxmi','task:namo_laxmi','scheme analytics'],
+    triggers: ['namo laxmi','namo_laxmi','task: namo_laxmi','task:namo_laxmi','scheme analytics','namo','laxmi','nly'],
     steps: [],
-    progress: ['Loading Namo Laxmi records...', 'Checking application statuses...', 'Building summary...'],
-    done: '🌸 Namo Laxmi application status. Tap the card for full details.',
-    build: () => buildNamoLaxmiArtifact(),
+    inline: true,
+    progress: ['Loading Namo Laxmi records...', 'Checking application statuses...', 'Fetching form details...'],
+    done: () => `🌸 Namo Laxmi Yojana — ${NAMO_LAXMI_APPS?.length || 0} applications found:`,
+    buildInline: () => buildInlineNamoLaxmiHtml(),
+    actions: [
+      { label: '📊 Scholarship overview', trigger: 'Task: scholarship', variant: 'primary' },
+    ],
   },
   dashboard: {
-    triggers: ['dashboard','school dashboard','task: dashboard','task:dashboard','kpi'],
+    triggers: ['dashboard','school dashboard','task: dashboard','task:dashboard','kpi','attendance summary'],
     steps: [],
     progress: ['Connecting to school database...', 'Loading KPIs...', 'Building dashboard...'],
     done: '📊 School dashboard ready. Tap the card to explore.',
     build: () => buildDashboardArtifact({ scope:'school' }),
   },
   district_dashboard: {
-    triggers: ['district dashboard','district_dashboard','task: district_dashboard','task:district_dashboard','district drilldown'],
+    triggers: ['district dashboard','district_dashboard','task: district_dashboard','task:district_dashboard','district drilldown','block analysis'],
     steps: [],
     progress: ['Aggregating district data...', 'Processing 412 schools...', 'Building overview...'],
     done: '📊 District dashboard ready. Tap the card to explore.',
     build: () => buildDashboardArtifact({ scope:'district' }),
   },
   state_dashboard: {
-    triggers: ['state dashboard','state_dashboard','task: state_dashboard','task:state_dashboard','state kpi','state intelligence'],
+    triggers: ['state dashboard','state_dashboard','task: state_dashboard','task:state_dashboard','state kpi','state intelligence','dropout risk'],
     steps: [],
     progress: ['Connecting to state EMIS...', 'Aggregating 33 districts...', 'Processing 33,248 schools...', 'Building command center...'],
     done: '🏛️ State command center ready. Tap the card to explore.',
@@ -1155,6 +1223,54 @@ export default function SuperHomePage() {
       btn.style.color = '#fff'
       btn.style.pointerEvents = 'none'
     }
+    window._vskToggleNL = (idx) => {
+      const detail = document.getElementById(`nl-detail-${idx}`)
+      const arrow = document.getElementById(`nl-arrow-${idx}`)
+      if (detail) {
+        const isOpen = detail.style.display !== 'none'
+        detail.style.display = isOpen ? 'none' : 'block'
+        if (arrow) arrow.textContent = isOpen ? '▼' : '▲'
+      }
+    }
+    window._vskNLAction = (action, idx) => {
+      const apps = NAMO_LAXMI_APPS || []
+      const app = apps[idx]
+      if (!app) return
+      if (action === 'resubmit') {
+        const btn = event?.target
+        if (btn) { btn.textContent = '✅ Re-submitted'; btn.style.background = '#dcfce7'; btn.style.color = '#16a34a'; btn.style.borderColor = '#16a34a'; btn.style.pointerEvents = 'none' }
+      } else if (action === 'edit' || action === 'view') {
+        // Show a toast-like alert with form details
+        const overlay = document.createElement('div')
+        overlay.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="this.remove()">
+          <div style="background:white;border-radius:16px;padding:20px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;font-family:Montserrat,sans-serif" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <h3 style="font-size:16px;font-weight:700;margin:0">${action === 'edit' ? '✏️ Edit' : '👁️ View'} — ${app.studentName}</h3>
+              <button onclick="this.closest('[style*=fixed]').remove()" style="border:none;background:none;font-size:18px;cursor:pointer">✕</button>
+            </div>
+            <div style="font-size:12px;display:flex;flex-direction:column;gap:8px">
+              <label style="font-weight:600">Student Name<input value="${app.studentName}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-top:2px;font-size:12px" ${action==='view'?'disabled':''}></label>
+              <label style="font-weight:600">Father's Name<input value="${app.fatherName}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-top:2px;font-size:12px" ${action==='view'?'disabled':''}></label>
+              <label style="font-weight:600">Mother's Name<input value="${app.motherName}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-top:2px;font-size:12px" ${action==='view'?'disabled':''}></label>
+              <label style="font-weight:600">Student Aadhaar<input value="${app.studentAadhaar}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-top:2px;font-size:12px" ${action==='view'?'disabled':''}></label>
+              <label style="font-weight:600">Mother Aadhaar<input value="${app.motherAadhaar}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-top:2px;font-size:12px" ${action==='view'?'disabled':''}></label>
+              <label style="font-weight:600">Bank Account<input value="${app.bankAcc}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-top:2px;font-size:12px" ${action==='view'?'disabled':''}></label>
+              <label style="font-weight:600">IFSC Code<input value="${app.ifsc}" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-top:2px;font-size:12px" ${action==='view'?'disabled':''}></label>
+              <div style="font-weight:600;margin-top:4px">Documents</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">
+                ${['Aadhaar','PAN Card','Income Cert','LC','Passbook'].map((d,di) => {
+                  const key = ['aadhaar','pan','income','lc','passbook'][di]
+                  return `<span style="padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;background:${app.docs?.[key]?'#dcfce7':'#fee2e2'};color:${app.docs?.[key]?'#16a34a':'#dc2626'}">${app.docs?.[key]?'✅':'❌'} ${d}</span>`
+                }).join('')}
+              </div>
+              ${app.reason ? `<div style="background:#fee2e2;color:#dc2626;padding:8px;border-radius:8px;font-size:11px;margin-top:4px">⚠️ Rejection reason: ${app.reason}</div>` : ''}
+              ${action === 'edit' ? `<button onclick="this.textContent='✅ Saved!';this.style.background='#16a34a';setTimeout(()=>this.closest('[style*=fixed]').remove(),800)" style="width:100%;padding:10px;background:#386AF6;color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px">💾 Save Changes</button>` : ''}
+            </div>
+          </div>
+        </div>`
+        document.body.appendChild(overlay)
+      }
+    }
     window._vskXamtaFile = (input) => {
       const file = input?.files?.[0]
       if (!file) return
@@ -1182,6 +1298,7 @@ export default function SuperHomePage() {
     }
     return () => {
       delete window._vskToggle; delete window._vskSubmit
+      delete window._vskToggleNL; delete window._vskNLAction
       delete window._vskXamtaFile; delete window._vskXamtaScan
     }
   }, [])
@@ -1351,14 +1468,14 @@ export default function SuperHomePage() {
 
     // ── Fallback ──────────────────────────────────────────────────────────
     const fallbackOpts = {
-      teacher:         ['Task: attendance','Task: lesson_plan','Task: at_risk'],
-      principal:       ['Task: dashboard','Task: at_risk','anomaly alerts'],
-      deo:             ['Task: district_dashboard','Task: learning_outcomes','anomaly alerts'],
-      state_secretary: ['Task: state_dashboard','Task: namo_laxmi','Task: learning_outcomes'],
-      parent:          ['Task: attendance','Task: scholarship','Task: report_card'],
+      teacher:         ['Mark attendance','Lesson plan','At-risk students','XAMTA scan','Namo Laxmi','Scholarship status','Generate report','Class performance'],
+      principal:       ['School dashboard','Attendance summary','At-risk students','Scholarship status','Generate report','War room'],
+      deo:             ['District dashboard','Block analysis','Scholarship status','War room','Learning outcomes','At-risk students'],
+      state_secretary: ['State dashboard','District drilldown','Namo Laxmi','Scholarship status','Learning outcomes','Dropout risk'],
+      parent:          ['My child attendance','Scholarship status','Download report','Message teacher'],
     }
     addBot(
-      "I can help with attendance, lesson plans, performance analysis, scholarships, and dashboards. Try typing one of those, or tap a Quick Action.",
+      "I can help you with multiple tasks. Tap any option below, or type your request:",
       fallbackOpts[role] || fallbackOpts.teacher
     )
   }, [collectState, activeBot, bots, addBot, openArtifact, role])

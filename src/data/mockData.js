@@ -159,22 +159,41 @@ export const LEARNING_OUTCOMES = {
   ],
 }
 
-// ── Namo Laxmi applications ──────────────────────────────────────────────────
+// ── Namo Laxmi applications (full form data) ────────────────────────────────
+const NL_FATHERS = ['Ramesh Patel','Jayesh Patel','Sunil Pandya','Dilip Parmar','Hitesh Barot','Kiran Bhatt','Nilam Mehta','Prashant Rao']
+const NL_MOTHERS = ['Meena Patel','Kavita Patel','Jyoti Pandya','Gita Parmar','Rita Barot','Hetal Bhatt','Nisha Mehta','Priti Rao']
 export const NAMO_LAXMI_APPS = (() => {
   const sts8 = STUDENTS[8] || []
-  const statuses = ['approved','approved','pending','rejected','approved','pending','approved','approved']
-  const reasons  = [null, null, 'Aadhaar mismatch', 'Bank account invalid', null, 'Guardian details incomplete', null, null]
+  const statuses = ['approved','approved','pending','rejected','approved','pending','rejected','approved']
+  const reasons  = [null, null, 'Aadhaar name mismatch — student name differs from CTS record', 'Bank account invalid — IFSC not found',
+    null, 'Guardian details incomplete — mother Aadhaar missing', 'Income certificate expired (>6 months old)', null]
+  const docs = [
+    { aadhaar: true, pan: true, income: true, lc: true, passbook: true },
+    { aadhaar: true, pan: true, income: true, lc: true, passbook: true },
+    { aadhaar: true, pan: false, income: true, lc: true, passbook: true },
+    { aadhaar: true, pan: true, income: true, lc: false, passbook: false },
+    { aadhaar: true, pan: true, income: true, lc: true, passbook: true },
+    { aadhaar: true, pan: false, income: false, lc: true, passbook: true },
+    { aadhaar: true, pan: true, income: false, lc: true, passbook: true },
+    { aadhaar: true, pan: true, income: true, lc: true, passbook: true },
+  ]
   return sts8.slice(0, 8).map((s, i) => ({
     studentId: s.id, studentName: s.name,
     grade: 8, section: 'B',
+    fatherName: NL_FATHERS[i % NL_FATHERS.length],
+    motherName: NL_MOTHERS[i % NL_MOTHERS.length],
+    dob: s.dob,
+    phone: s.phone,
     status: statuses[i % statuses.length],
     appId: `NL2025GJ${String(i + 12).padStart(4, '0')}`,
     amount: 5000,
     reason: reasons[i % reasons.length],
     submittedDate: `0${(i % 9) + 1}/04/2026`,
-    motherName: s.guardian,
-    aadhaar: `XXXX XXXX ${String(1000 + i * 111).slice(0, 4)}`,
+    studentAadhaar: `XXXX XXXX ${String(1000 + i * 111).slice(0, 4)}`,
+    motherAadhaar: `XXXX XXXX ${String(2000 + i * 222).slice(0, 4)}`,
     bankAcc: `SBIN${String(10000 + i * 1234).slice(0, 8)}`,
+    ifsc: `SBIN000${1234 + i}`,
+    docs: docs[i % docs.length],
   }))
 })()
 
