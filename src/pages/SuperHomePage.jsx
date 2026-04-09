@@ -736,7 +736,7 @@ function greetingReply(text, botName) {
 // UI COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function VSKSidebar({ onNew, activeSession, onSelect, role, userProfile, onClose }) {
+function VSKSidebar({ onNew, activeSession, onSelect, role, userProfile, onClose, onSignOut }) {
   const meta = userProfile || ROLE_META[role] || ROLE_META.teacher
   const bots = ROLE_BOTS[role] || ROLE_BOTS.teacher || []
   const initial = (meta.name || 'U')[0].toUpperCase()
@@ -809,6 +809,11 @@ function VSKSidebar({ onNew, activeSession, onSelect, role, userProfile, onClose
           <div className="text-[12px] font-semibold text-txt-primary truncate">{meta.name || meta.org}</div>
           <div className="text-[10px] text-txt-tertiary truncate">{meta.badge || meta.org}</div>
         </div>
+        <button
+          onClick={onSignOut}
+          className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
+          style={{ fontFamily: 'Montserrat, sans-serif' }}
+        >Log out</button>
       </div>
     </div>
   )
@@ -1259,7 +1264,7 @@ function ArtifactModal({ artifact, onClose }) {
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SuperHomePage() {
-  const { role, userProfile } = useApp()
+  const { role, userProfile, signOut } = useApp()
   const bots = ROLE_BOTS[role] || ROLE_BOTS.teacher || ['VSK 3.0']
   const [activeBot, setActiveBot]   = useState(bots[0])
   const [messages, setMessages]     = useState([])
@@ -1614,7 +1619,9 @@ export default function SuperHomePage() {
     const gradeMatch = q.match(/(?:grade|class)\s*(\d+)/i)
     const grade = gradeMatch ? gradeMatch[1] : '6'
     const topicMatch = q.match(/(?:on|about|for|topic)\s+(.+?)(?:\s+for|\s+grade|\s+class|$)/i)
-    const topic = topicMatch ? topicMatch[1].replace(/^(a|the)\s/i,'') : (isLesson ? 'Photosynthesis' : isReport ? 'Student Report' : 'School Notice')
+    // Use the user's full input as the title if no topic pattern matched
+    const fallbackTitle = text.replace(/^(create|make|design|generate)\s+/i,'').replace(/\s+(with|using|in)\s+(canva|adobe).*/i,'').trim()
+    const topic = topicMatch ? topicMatch[1].replace(/^(a|the)\s/i,'') : (fallbackTitle || (isLesson ? 'Photosynthesis' : isReport ? 'Student Report' : 'School Notice'))
     const subject = q.includes('math') ? 'Mathematics' : q.includes('sci') ? 'Science' : q.includes('guj') ? 'Gujarati' : 'Science'
 
     const themes = tool === 'canva'
@@ -1862,6 +1869,7 @@ export default function SuperHomePage() {
           role={role}
           userProfile={userProfile}
           onClose={() => setSidebar(false)}
+          onSignOut={signOut}
         />
       </div>
 
