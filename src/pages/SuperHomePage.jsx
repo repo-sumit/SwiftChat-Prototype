@@ -1397,27 +1397,145 @@ export default function SuperHomePage() {
     window._vskXamtaFile = (input) => {
       const file = input?.files?.[0]
       if (!file) return
-      // Simulate scanning animation
-      const scanDiv = document.createElement('div')
-      scanDiv.id = 'xamta-scan-overlay'
-      scanDiv.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;font-family:Montserrat,sans-serif">
-        <div style="font-size:48px;margin-bottom:16px;animation:pulse 1s infinite">🔍</div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:8px">Scanning ${file.name}...</div>
-        <div style="font-size:12px;opacity:0.7">Detecting answer bubbles and evaluating responses</div>
-        <div style="width:200px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin-top:16px;overflow:hidden">
-          <div style="width:0;height:100%;background:#386AF6;border-radius:2px;animation:scanBar 3s forwards"></div>
-        </div>
-      </div>`
-      document.body.appendChild(scanDiv)
-      // Add animation keyframes
-      const style = document.createElement('style')
-      style.textContent = '@keyframes scanBar{0%{width:0}50%{width:60%}100%{width:100%}}'
-      document.head.appendChild(style)
-      setTimeout(() => { scanDiv.remove(); style.remove() }, 3000)
+
+      // Read file as data URL for image preview
+      const isImage = file.type?.startsWith('image') || file.name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+      const reader = new FileReader()
+
+      const showScanner = (imgSrc) => {
+        const overlay = document.createElement('div')
+        overlay.id = 'xamta-scan-overlay'
+        const style = document.createElement('style')
+        style.textContent = `
+          @keyframes xamtaScanLine{0%{top:0}50%{top:calc(100% - 4px)}100%{top:0}}
+          @keyframes xamtaPulseGlow{0%,100%{box-shadow:0 0 20px rgba(56,106,246,0.3)}50%{box-shadow:0 0 60px rgba(56,106,246,0.8),0 0 120px rgba(56,106,246,0.3)}}
+          @keyframes xamtaFadeIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+          @keyframes xamtaProgress{0%{width:0}100%{width:100%}}
+          @keyframes xamtaCorner{0%,100%{opacity:0.5}50%{opacity:1}}
+          @keyframes xamtaSuccess{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
+        `
+        document.head.appendChild(style)
+
+        overlay.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Montserrat,sans-serif;animation:xamtaFadeIn 0.3s ease">
+          <!-- Header -->
+          <div style="color:white;text-align:center;margin-bottom:20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#60A5FA;margin-bottom:4px">XAMTA SCANNER</div>
+            <div id="xamta-status" style="font-size:15px;font-weight:700;color:white">Initializing scan...</div>
+          </div>
+
+          <!-- Image container with scan effect -->
+          <div style="position:relative;width:min(80vw,360px);height:min(60vw,280px);border-radius:12px;overflow:hidden;animation:xamtaPulseGlow 2s ease infinite">
+            ${imgSrc
+              ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.7)" />`
+              : `<div style="width:100%;height:100%;background:#1a1a2e;display:flex;align-items:center;justify-content:center">
+                  <div style="font-size:48px">📄</div>
+                </div>`}
+
+            <!-- Blue scanning line (MRI style) -->
+            <div id="xamta-scanline" style="position:absolute;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent 0%,rgba(56,106,246,0.3) 20%,#386AF6 50%,rgba(56,106,246,0.3) 80%,transparent 100%);box-shadow:0 0 20px #386AF6,0 0 60px rgba(56,106,246,0.5);top:0;animation:xamtaScanLine 2.5s ease-in-out infinite;z-index:2"></div>
+
+            <!-- Blue tint overlay -->
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(56,106,246,0.08) 0%,rgba(56,106,246,0.15) 50%,rgba(56,106,246,0.08) 100%);z-index:1"></div>
+
+            <!-- Corner brackets -->
+            <div style="position:absolute;top:8px;left:8px;width:24px;height:24px;border-top:3px solid #60A5FA;border-left:3px solid #60A5FA;z-index:3;animation:xamtaCorner 1.5s ease infinite"></div>
+            <div style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-top:3px solid #60A5FA;border-right:3px solid #60A5FA;z-index:3;animation:xamtaCorner 1.5s ease 0.2s infinite"></div>
+            <div style="position:absolute;bottom:8px;left:8px;width:24px;height:24px;border-bottom:3px solid #60A5FA;border-left:3px solid #60A5FA;z-index:3;animation:xamtaCorner 1.5s ease 0.4s infinite"></div>
+            <div style="position:absolute;bottom:8px;right:8px;width:24px;height:24px;border-bottom:3px solid #60A5FA;border-right:3px solid #60A5FA;z-index:3;animation:xamtaCorner 1.5s ease 0.6s infinite"></div>
+
+            <!-- Grid overlay -->
+            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(56,106,246,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(56,106,246,0.06) 1px,transparent 1px);background-size:20px 20px;z-index:1"></div>
+          </div>
+
+          <!-- Progress section -->
+          <div style="width:min(80vw,360px);margin-top:20px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span id="xamta-step" style="font-size:11px;color:#93C5FD;font-weight:600">Detecting answer sheet...</span>
+              <span id="xamta-pct" style="font-size:11px;color:#60A5FA;font-weight:700">0%</span>
+            </div>
+            <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden">
+              <div id="xamta-bar" style="width:0;height:100%;background:linear-gradient(90deg,#386AF6,#60A5FA);border-radius:3px;transition:width 0.3s ease"></div>
+            </div>
+            <div id="xamta-details" style="margin-top:12px;font-size:10px;color:rgba(255,255,255,0.4);text-align:center">
+              File: ${file.name || 'camera_capture.jpg'} · Processing with XAMTA AI Engine
+            </div>
+          </div>
+
+          <!-- Success state (hidden initially) -->
+          <div id="xamta-success" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.9);z-index:10;flex-direction:column;align-items:center;justify-content:center;animation:xamtaSuccess 0.4s ease">
+            <div style="width:72px;height:72px;border-radius:50%;background:#16a34a;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 0 40px rgba(22,163,106,0.5)">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>
+            </div>
+            <div style="font-size:18px;font-weight:800;color:white;margin-bottom:6px">Scan Complete!</div>
+            <div style="font-size:13px;color:#86EFAC;font-weight:600;margin-bottom:4px">Data Captured Successfully</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5)">3 answer sheets · 75 responses detected</div>
+            <div style="display:flex;gap:8px;margin-top:20px">
+              <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 14px;text-align:center">
+                <div style="font-size:16px;font-weight:800;color:#60A5FA">3</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.5)">Sheets</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 14px;text-align:center">
+                <div style="font-size:16px;font-weight:800;color:#86EFAC">75</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.5)">Responses</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 14px;text-align:center">
+                <div style="font-size:16px;font-weight:800;color:#FCD34D">92%</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.5)">Accuracy</div>
+              </div>
+            </div>
+          </div>
+        </div>`
+
+        document.body.appendChild(overlay)
+
+        // Animate progress steps
+        const steps = [
+          [15, 'Detecting answer sheet layout...'],
+          [30, 'Identifying student information...'],
+          [50, 'Reading answer bubbles...'],
+          [70, 'Matching with answer key...'],
+          [85, 'Calculating LO scores...'],
+          [100, 'Finalizing results...'],
+        ]
+        let stepIdx = 0
+        const progressIv = setInterval(() => {
+          if (stepIdx >= steps.length) { clearInterval(progressIv); return }
+          const [pct, label] = steps[stepIdx]
+          const bar = document.getElementById('xamta-bar')
+          const step = document.getElementById('xamta-step')
+          const pctEl = document.getElementById('xamta-pct')
+          const status = document.getElementById('xamta-status')
+          if (bar) bar.style.width = pct + '%'
+          if (step) step.textContent = label
+          if (pctEl) pctEl.textContent = pct + '%'
+          if (status) status.textContent = pct < 100 ? 'Scanning in progress...' : 'Processing complete'
+          stepIdx++
+        }, 600)
+
+        // Show success after scan completes, then close
+        setTimeout(() => {
+          clearInterval(progressIv)
+          const scanline = document.getElementById('xamta-scanline')
+          if (scanline) scanline.style.display = 'none'
+          const success = document.getElementById('xamta-success')
+          if (success) success.style.display = 'flex'
+        }, 4000)
+
+        setTimeout(() => {
+          overlay.remove()
+          style.remove()
+        }, 6500)
+      }
+
+      if (isImage && file instanceof File) {
+        reader.onload = (e) => showScanner(e.target.result)
+        reader.readAsDataURL(file)
+      } else {
+        showScanner(null)
+      }
     }
     window._vskXamtaScan = () => {
-      // On mobile, would open camera — for demo, simulate
-      window._vskXamtaFile?.({ files: [{ name: 'camera_capture.jpg' }] })
+      window._vskXamtaFile?.({ files: [{ name: 'camera_capture.jpg', type: 'image/jpeg' }] })
     }
     return () => {
       delete window._vskToggle; delete window._vskSubmit
