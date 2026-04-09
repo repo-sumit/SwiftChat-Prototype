@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
-  Plus, Search, Send, Upload,
+  Plus, Search, Send, Upload, ChevronRight, ArrowLeft, Camera, FileUp, Eye,
   Download, X, Menu, Sparkles,
   CalendarCheck, BarChart3, ScanLine, Award, AlertTriangle,
   MessageSquare, FileText, UserRound, BookOpen, GraduationCap,
-  TrendingUp, Building2, Map, Brain,
+  TrendingUp, Building2, Map, Brain, Clock,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import {
   STUDENTS, PERF_DATA, AT_RISK_STUDENTS, SCHOLARSHIP_DATA,
   DISTRICTS, STATE_SUMMARY, LEARNING_OUTCOMES, NAMO_LAXMI_APPS,
-  SCHOOL_INFO,
+  SCHOOL_INFO, XAMTA_SAMPLE_RESULTS, getAttendanceHistory,
 } from '../data/mockData'
 import { ROLE_BOTS, ROLE_SUGGESTIONS } from '../roles/roleConfig'
 
@@ -548,7 +548,8 @@ const TASK_FLOWS = {
     triggers: ['attendance','mark attendance','mark','present','absent','task: attendance','task:attendance','haajri'],
     steps: [{ key:'grade', prompt:'Which grade?', opts:['3','5','6','8'] }],
     inline: true,
-    done: (ctx) => `📋 Launching attendance for **Grade ${ctx.grade||8}** — ${TODAY}`,
+    progress: ['Fetching student roster...', 'Loading attendance records...', 'Building register...'],
+    done: (ctx) => `📋 Attendance register for Grade ${ctx.grade||8} — ${TODAY}`,
     buildInline: (ctx) => buildInlineAttendanceHtml(ctx.grade || '8'),
     actions: [
       { label: '✅ Submit Attendance', trigger: '_submit_att', variant: 'ok' },
@@ -560,6 +561,7 @@ const TASK_FLOWS = {
     triggers: ['at-risk','at risk','risk','task: at_risk','task:at_risk','dropout','struggling'],
     steps: [],
     inline: true,
+    progress: ['Analyzing attendance patterns...', 'Calculating risk scores...', 'Identifying at-risk students...'],
     done: () => '⚠️ Here are the at-risk students for your school:',
     buildInline: () => buildInlineAtRiskHtml(),
     actions: [
@@ -574,13 +576,15 @@ const TASK_FLOWS = {
       { key:'grade',   prompt:'Which grade?',   opts:['3','5','6','8'] },
       { key:'topic',   prompt:'What topic?' },
     ],
-    done: 'Your lesson plan is ready. You can share or download it from the panel.',
+    progress: ['Analyzing curriculum...', 'Generating activities...', 'Building lesson plan...'],
+    done: '📋 Your lesson plan is ready! Tap the card to view full details.',
     build: (ctx) => buildLessonPlanArtifact(ctx),
   },
   class_performance: {
     triggers: ['performance','class performance','class_performance','task: class_performance','task:class_performance','scores','grades','block analysis'],
     steps: [{ key:'grade', prompt:'Which grade?', opts:['All','3','5','6'] }],
-    done: 'Performance dashboard ready. What would you like to do next?',
+    progress: ['Querying scores database...', 'Calculating averages...', 'Building dashboard...'],
+    done: '📊 Performance dashboard ready. Tap the card to explore.',
     build: (ctx) => buildPerformanceArtifact(ctx),
   },
   report_card: {
@@ -589,13 +593,15 @@ const TASK_FLOWS = {
       { key:'grade',   prompt:'Which grade?',   opts:['3','5','6','8'] },
       { key:'student', prompt:'Which student?', opts:['All Students','Ravi Parmar','Komal Patel','Ananya Pandya'] },
     ],
-    done: 'Report card generated! You can share or download from the panel.',
+    progress: ['Fetching student data...', 'Generating report card...', 'Preparing PDF...'],
+    done: '📄 Report card generated! Tap to view or download.',
     build: (ctx) => buildReportCardArtifact(ctx),
   },
   scholarship: {
     triggers: ['scholarship','dbt','ews','task: scholarship','task:scholarship','dbt status','dbt report','dbt disbursal'],
     steps: [],
     inline: true,
+    progress: ['Loading scholarship records...', 'Checking disbursement status...'],
     done: () => `🏅 Scholarship status for ${SCHOOL}:`,
     buildInline: () => buildInlineScholarshipHtml(),
     actions: [
@@ -606,31 +612,36 @@ const TASK_FLOWS = {
   namo_laxmi: {
     triggers: ['namo laxmi','namo_laxmi','task: namo_laxmi','task:namo_laxmi','scheme analytics'],
     steps: [],
-    done: 'Namo Laxmi application status loaded.',
+    progress: ['Loading Namo Laxmi records...', 'Checking application statuses...', 'Building summary...'],
+    done: '🌸 Namo Laxmi application status. Tap the card for full details.',
     build: () => buildNamoLaxmiArtifact(),
   },
   dashboard: {
     triggers: ['dashboard','school dashboard','task: dashboard','task:dashboard','kpi'],
     steps: [],
-    done: 'School dashboard ready.',
+    progress: ['Connecting to school database...', 'Loading KPIs...', 'Building dashboard...'],
+    done: '📊 School dashboard ready. Tap the card to explore.',
     build: () => buildDashboardArtifact({ scope:'school' }),
   },
   district_dashboard: {
     triggers: ['district dashboard','district_dashboard','task: district_dashboard','task:district_dashboard','district drilldown'],
     steps: [],
-    done: 'District dashboard ready.',
+    progress: ['Aggregating district data...', 'Processing 412 schools...', 'Building overview...'],
+    done: '📊 District dashboard ready. Tap the card to explore.',
     build: () => buildDashboardArtifact({ scope:'district' }),
   },
   state_dashboard: {
     triggers: ['state dashboard','state_dashboard','task: state_dashboard','task:state_dashboard','state kpi','state intelligence'],
     steps: [],
-    done: 'State dashboard ready.',
+    progress: ['Connecting to state EMIS...', 'Aggregating 33 districts...', 'Processing 33,248 schools...', 'Building command center...'],
+    done: '🏛️ State command center ready. Tap the card to explore.',
     build: () => buildDashboardArtifact({ scope:'state' }),
   },
   learning_outcomes: {
     triggers: ['learning outcomes','learning_outcomes','task: learning_outcomes','task:learning_outcomes','lo','outcomes'],
     steps: [],
-    done: 'Learning outcomes report loaded.',
+    progress: ['Loading XAMTA results...', 'Analyzing learning outcomes...', 'Building report...'],
+    done: '🎯 Learning outcomes report ready. Tap to view.',
     build: () => buildLearningOutcomesArtifact(),
   },
 }
@@ -748,64 +759,148 @@ function TypingIndicator() {
   )
 }
 
-function MessageBubble({ msg, onChipClick, onAction }) {
+// Claude/ChatGPT-style streaming progress text
+function ProgressText({ steps }) {
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    if (idx < steps.length - 1) {
+      const t = setTimeout(() => setIdx(i => i + 1), 900 + Math.random() * 500)
+      return () => clearTimeout(t)
+    }
+  }, [idx, steps.length])
+  return (
+    <div className="flex gap-3 items-end mb-4">
+      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">V</div>
+      <div className="bg-surface-secondary rounded-2xl rounded-bl-sm px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] text-txt-secondary" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            {steps[idx]}
+          </span>
+          <span className="inline-flex gap-1">
+            {[0,1,2].map(i => (
+              <span key={i} className="w-1 h-1 rounded-full bg-primary animate-typing" style={{ animationDelay: `${i*0.2}s` }} />
+            ))}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Full-screen webview modal for expanded cards
+function WebviewModal({ card, onClose }) {
+  if (!card) return null
+  const SESSION_TTL = 5 * 60 * 1000 // 5 minutes
+  const isExpired = card.timestamp && (Date.now() - card.timestamp > SESSION_TTL)
+  return (
+    <div className="absolute inset-0 z-50 bg-white flex flex-col animate-slide-in">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-bdr flex-shrink-0" style={{ background: '#F8FAFC' }}>
+        <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-secondary">
+          <ArrowLeft size={18} className="text-txt-primary" />
+        </button>
+        <span className="text-[18px]">{card.icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[14px] font-bold text-txt-primary truncate" style={{ fontFamily: 'Montserrat, sans-serif' }}>{card.title}</div>
+          {card.subtitle && <div className="text-[11px] text-txt-secondary">{card.subtitle}</div>}
+        </div>
+        <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-secondary">
+          <X size={16} className="text-txt-tertiary" />
+        </button>
+      </div>
+      {/* Content */}
+      {isExpired ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
+          <Clock size={48} className="text-txt-tertiary mb-4" />
+          <h3 className="text-[18px] font-bold text-txt-primary mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>Session Expired</h3>
+          <p className="text-[13px] text-txt-secondary mb-6">This view has expired. Please run the task again for fresh data.</p>
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-xl text-[14px] font-bold text-white"
+            style={{ background: '#386AF6', fontFamily: 'Montserrat, sans-serif' }}
+          >Back to Chat</button>
+        </div>
+      ) : (
+        <div
+          className="flex-1 overflow-y-auto px-4 py-4"
+          style={{ fontFamily: 'Inter, sans-serif' }}
+          dangerouslySetInnerHTML={{ __html: card.fullHtml || card.html || '' }}
+        />
+      )}
+    </div>
+  )
+}
+
+function MessageBubble({ msg, onChipClick, onAction, onCardClick }) {
   const isUser = msg.role === 'user'
   const ACTION_COLORS = {
     ok:   'border-[#4CAF50] text-[#4CAF50] active:bg-[#4CAF50]',
     err:  'border-[#E53935] text-[#E53935] active:bg-[#E53935]',
-    warn: 'border-[#FF8F00] text-[#E65100] active:bg-[#FF8F00]',
+    warn: 'border-[#FF8F00] text-[#FF8F00] active:bg-[#FF8F00]',
     primary: 'border-primary text-primary active:bg-primary',
   }
+  const hasWide = msg.html || msg.card
   return (
     <div className={`flex gap-3 mb-4 ${isUser ? 'flex-row-reverse' : 'items-end'}`}>
       {!isUser && (
         <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0 self-end">V</div>
       )}
-      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} ${msg.html ? 'max-w-[90%] md:max-w-[80%]' : 'max-w-[75%]'}`}>
+      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} ${hasWide ? 'max-w-[92%] md:max-w-[82%]' : 'max-w-[75%]'}`}>
         {/* Text bubble */}
         {msg.text && (
-          <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed whitespace-pre-line ${
-            isUser
-              ? 'bg-primary text-white rounded-br-sm'
-              : 'bg-surface-secondary text-txt-primary rounded-bl-sm'
-          }`}>
+          <div className={`px-4 py-2.5 rounded-2xl text-[13.5px] leading-relaxed whitespace-pre-line ${
+            isUser ? 'text-white rounded-br-sm' : 'bg-[#F5F7FA] text-txt-primary rounded-bl-sm'
+          }`} style={{ background: isUser ? '#386AF6' : undefined, fontFamily: 'Montserrat, sans-serif' }}>
             {msg.text}
           </div>
         )}
-        {/* Inline HTML card (attendance grids, data tables, etc.) */}
-        {msg.html && (
+        {/* Expandable card bubble (click to open webview) */}
+        {msg.card && (
           <div
-            className="mt-1.5 bg-white border border-bdr-light rounded-2xl px-4 py-3 text-txt-primary"
-            dangerouslySetInnerHTML={{ __html: msg.html }}
-          />
+            onClick={() => onCardClick?.(msg.card)}
+            className="mt-2 bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow w-full"
+            style={{ maxWidth: 380 }}
+          >
+            {msg.card.preview && (
+              <div className="px-4 pt-3 pb-1" dangerouslySetInnerHTML={{ __html: msg.card.preview }} />
+            )}
+            <div className="flex items-center gap-3 px-4 py-3 border-t border-[#F0F2F5]">
+              <span className="text-[18px]">{msg.card.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-bold text-txt-primary" style={{ fontFamily: 'Montserrat, sans-serif' }}>{msg.card.title}</div>
+                {msg.card.subtitle && <div className="text-[11px] text-txt-tertiary">{msg.card.subtitle}</div>}
+              </div>
+              <div className="flex items-center gap-1 text-primary text-[12px] font-semibold flex-shrink-0">
+                <Eye size={14} /> Open
+              </div>
+            </div>
+          </div>
         )}
-        {/* Action buttons (colored, like the HTML reference) */}
+        {/* Inline HTML card */}
+        {msg.html && (
+          <div className="mt-1.5 bg-white border border-[#E2E8F0] rounded-2xl px-4 py-3 text-txt-primary"
+            dangerouslySetInnerHTML={{ __html: msg.html }} />
+        )}
+        {/* Action buttons */}
         {msg.actions?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {msg.actions.map((a, i) => (
-              <button
-                key={i}
+              <button key={i}
                 onClick={() => onAction ? onAction(a) : onChipClick(a.trigger)}
-                className={`px-3 py-1.5 rounded-full border-[1.5px] text-[12px] font-bold bg-white transition-colors active:text-white ${
-                  ACTION_COLORS[a.variant] || ACTION_COLORS.primary
-                }`}
-              >
-                {a.label}
-              </button>
+                className={`px-3.5 py-1.5 rounded-full border-[1.5px] text-[12px] font-bold bg-white transition-colors active:text-white ${ACTION_COLORS[a.variant] || ACTION_COLORS.primary}`}
+                style={{ fontFamily: 'Montserrat, sans-serif' }}
+              >{a.label}</button>
             ))}
           </div>
         )}
-        {/* Plain chip options */}
+        {/* Chip options */}
         {msg.opts?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2.5">
             {msg.opts.map((opt, i) => (
-              <button
-                key={i}
-                onClick={() => onChipClick(opt)}
-                className="px-4 py-1.5 rounded-full border border-bdr text-[13px] text-txt-primary bg-white hover:bg-surface-secondary active:bg-bdr transition-colors"
-              >
-                {opt}
-              </button>
+              <button key={i} onClick={() => onChipClick(opt)}
+                className="px-4 py-1.5 rounded-full border border-[#E2E8F0] text-[12.5px] text-txt-primary bg-white hover:bg-[#F5F7FA] transition-colors"
+                style={{ fontFamily: 'Montserrat, sans-serif' }}
+              >{opt}</button>
             ))}
           </div>
         )}
@@ -1022,6 +1117,8 @@ export default function SuperHomePage() {
   const [artifact, setArtifact]     = useState(null)
   const [activeSession, setSession] = useState('VSK 3.0 Demo Session')
   const [sidebarOpen, setSidebar]   = useState(false)
+  const [progressSteps, setProgress] = useState(null) // streaming progress text
+  const [webviewCard, setWebview]    = useState(null)  // opened card for webview
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -1058,16 +1155,55 @@ export default function SuperHomePage() {
       btn.style.color = '#fff'
       btn.style.pointerEvents = 'none'
     }
-    return () => { delete window._vskToggle; delete window._vskSubmit }
+    window._vskXamtaFile = (input) => {
+      const file = input?.files?.[0]
+      if (!file) return
+      // Simulate scanning animation
+      const scanDiv = document.createElement('div')
+      scanDiv.id = 'xamta-scan-overlay'
+      scanDiv.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;font-family:Montserrat,sans-serif">
+        <div style="font-size:48px;margin-bottom:16px;animation:pulse 1s infinite">🔍</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px">Scanning ${file.name}...</div>
+        <div style="font-size:12px;opacity:0.7">Detecting answer bubbles and evaluating responses</div>
+        <div style="width:200px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin-top:16px;overflow:hidden">
+          <div style="width:0;height:100%;background:#386AF6;border-radius:2px;animation:scanBar 3s forwards"></div>
+        </div>
+      </div>`
+      document.body.appendChild(scanDiv)
+      // Add animation keyframes
+      const style = document.createElement('style')
+      style.textContent = '@keyframes scanBar{0%{width:0}50%{width:60%}100%{width:100%}}'
+      document.head.appendChild(style)
+      setTimeout(() => { scanDiv.remove(); style.remove() }, 3000)
+    }
+    window._vskXamtaScan = () => {
+      // On mobile, would open camera — for demo, simulate
+      window._vskXamtaFile?.({ files: [{ name: 'camera_capture.jpg' }] })
+    }
+    return () => {
+      delete window._vskToggle; delete window._vskSubmit
+      delete window._vskXamtaFile; delete window._vskXamtaScan
+    }
   }, [])
 
-  const addBot = useCallback((text, opts = [], { html, actions } = {}) => {
-    setTyping(true)
-    const delay = Math.min(250 + (text||'').length * 2, 800) + Math.random() * 200
-    setTimeout(() => {
-      setTyping(false)
-      setMessages(prev => [...prev, { id: Date.now(), role:'bot', text, opts, html: html||null, actions: actions||null }])
-    }, delay)
+  const addBot = useCallback((text, opts = [], { html, actions, card, progress } = {}) => {
+    const msg = { id: Date.now(), role:'bot', text, opts, html: html||null, actions: actions||null, card: card||null }
+    if (progress?.length) {
+      // Show streaming progress text, then deliver message
+      setProgress(progress)
+      const totalDelay = progress.length * 1100
+      setTimeout(() => {
+        setProgress(null)
+        setMessages(prev => [...prev, msg])
+      }, totalDelay)
+    } else {
+      setTyping(true)
+      const delay = Math.min(250 + (text||'').length * 2, 800) + Math.random() * 200
+      setTimeout(() => {
+        setTyping(false)
+        setMessages(prev => [...prev, msg])
+      }, delay)
+    }
   }, [])
 
   const openArtifact = useCallback((af) => setArtifact(af), [])
@@ -1091,12 +1227,15 @@ export default function SuperHomePage() {
         if (flow.inline && flow.buildInline) {
           const html = flow.buildInline(newCtx)
           const doneText = typeof flow.done === 'function' ? flow.done(newCtx) : flow.done
-          addBot(doneText, [], { html, actions: flow.actions })
+          addBot(doneText, [], { html, actions: flow.actions, progress: flow.progress })
         } else {
           const af = flow.build(newCtx)
-          openArtifact(af)
           const doneText = typeof flow.done === 'function' ? flow.done(newCtx) : flow.done
-          addBot(doneText)
+          // Build an expandable card for the artifact
+          const card = { title: af.title, icon: af.icon, subtitle: `${SCHOOL} · ${TODAY}`,
+            preview: `<div style="font-size:11px;color:#666;max-height:60px;overflow:hidden">${(af.html||'').slice(0,200)}...</div>`,
+            fullHtml: af.html, timestamp: Date.now() }
+          addBot(doneText, [], { card, progress: flow.progress })
         }
       }
       return
@@ -1122,12 +1261,14 @@ export default function SuperHomePage() {
         if (flow.inline && flow.buildInline) {
           const html = flow.buildInline({})
           const doneText = typeof flow.done === 'function' ? flow.done({}) : flow.done
-          addBot(doneText, [], { html, actions: flow.actions })
+          addBot(doneText, [], { html, actions: flow.actions, progress: flow.progress })
         } else {
           const af = flow.build({})
-          openArtifact(af)
           const doneText = typeof flow.done === 'function' ? flow.done({}) : flow.done
-          addBot(doneText)
+          const card = { title: af.title, icon: af.icon, subtitle: `${SCHOOL} · ${TODAY}`,
+            preview: `<div style="font-size:11px;color:#666;max-height:60px;overflow:hidden">${(af.html||'').slice(0,200)}...</div>`,
+            fullHtml: af.html, timestamp: Date.now() }
+          addBot(doneText, [], { card, progress: flow.progress })
         }
       } else {
         setCollect({ taskId, stepIdx: 0, ctx: {} })
@@ -1141,7 +1282,31 @@ export default function SuperHomePage() {
     const q = text.toLowerCase()
 
     if (q.includes('xamta') || q.includes('scan')) {
-      addBot('📷 XAMTA Scan ready. Point your camera at the answer sheet and tap capture. (Camera feature opens on device.)')
+      const isMobile = window.innerWidth < 768
+      const xamtaHtml = `
+        <div style="margin-top:4px">
+          <div style="font-size:12px;color:#666;margin-bottom:10px"><strong>XAMTA Assessment Scanner</strong> — Upload or scan answer sheets</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div onclick="document.getElementById('xamta-upload')?.click()" style="flex:1;background:#F5F7FA;border:2px dashed #386AF6;border-radius:12px;padding:14px;text-align:center;cursor:pointer">
+              <div style="font-size:22px;margin-bottom:4px">📤</div>
+              <div style="font-size:11px;font-weight:700;color:#386AF6">Upload Image/PDF</div>
+            </div>
+            ${isMobile ? `<div onclick="window._vskXamtaScan?.()" style="flex:1;background:#F5F7FA;border:2px dashed #16A34A;border-radius:12px;padding:14px;text-align:center;cursor:pointer">
+              <div style="font-size:22px;margin-bottom:4px">📷</div>
+              <div style="font-size:11px;font-weight:700;color:#16A34A">Open Camera</div>
+            </div>` : ''}
+          </div>
+          <input type="file" id="xamta-upload" accept="image/*,.pdf" style="display:none" onchange="window._vskXamtaFile?.(this)" />
+          <div style="font-size:10px;color:#999">Or enter marks manually using the form below</div>
+        </div>`
+      addBot('📷 XAMTA Assessment Scanner ready.', [], {
+        html: xamtaHtml,
+        actions: [
+          { label: '📝 Enter marks by form', trigger: '_xamta_form', variant: 'primary' },
+          { label: '📊 View past results', trigger: 'Task: learning_outcomes', variant: 'primary' },
+        ],
+        progress: ['Initializing XAMTA scanner...', 'Loading answer key templates...'],
+      })
       return
     }
     if (q.includes('parent alert') || q.includes('parent connect') || q.includes('notify parent')) {
@@ -1263,15 +1428,28 @@ export default function SuperHomePage() {
                       key={msg.id}
                       msg={msg}
                       onChipClick={handleSend}
+                      onCardClick={(card) => setWebview(card)}
                       onAction={(a) => {
                         if (a.trigger === '_submit_att') {
-                          // Find and click the submit button in the DOM
-                          const btn = document.querySelector('#att-grid')?.parentElement?.querySelector('[data-status]')?.closest('div')?.parentElement
-                          window._vskSubmit?.(document.createElement('div')) // no-op visual
                           addBot('✅ Attendance submitted successfully! Parent alerts queued for 5:00 PM.', [], {
+                            progress: ['Saving attendance records...', 'Queuing parent SMS alerts...', 'Done!'],
                             actions: [
                               { label: '📊 View dashboard', trigger: 'Task: dashboard', variant: 'primary' },
                               { label: '📨 Send alerts now', trigger: 'parent alert', variant: 'warn' },
+                            ]
+                          })
+                        } else if (a.trigger === '_xamta_form') {
+                          const results = XAMTA_SAMPLE_RESULTS || []
+                          const rows = results.map(r => `<div style="display:flex;align-items:center;padding:8px;border-bottom:1px solid #f0f0f0;gap:8px">
+                            <div style="flex:1;font-size:12px"><strong>${r.student}</strong><br><span style="color:#999;font-size:10px">Grade ${r.grade} · ${r.subject}</span></div>
+                            <span style="font-size:13px;font-weight:700;color:${r.score/r.total>=0.7?'#16a34a':'#dc2626'}">${r.score}/${r.total}</span>
+                          </div>`).join('')
+                          addBot('📊 XAMTA scan results processed:', [], {
+                            html: `<div style="margin-top:4px"><div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">${rows}</div></div>`,
+                            progress: ['Processing scanned sheets...', 'Matching answer keys...', 'Calculating LO scores...'],
+                            actions: [
+                              { label: '📥 Save results', trigger: '_save_xamta', variant: 'ok' },
+                              { label: '📊 View outcomes', trigger: 'Task: learning_outcomes', variant: 'primary' },
                             ]
                           })
                         } else {
@@ -1281,11 +1459,12 @@ export default function SuperHomePage() {
                     />
                   ))}
                   {typing && <TypingIndicator />}
+                  {progressSteps && <ProgressText steps={progressSteps} />}
                   <div ref={bottomRef} />
                 </>
               )}
             </div>
-            <InputBar onSend={handleSend} disabled={typing} activeBot={activeBot} />
+            <InputBar onSend={handleSend} disabled={typing || !!progressSteps} activeBot={activeBot} />
           </div>
 
           {/* Artifact panel — desktop inline */}
@@ -1299,6 +1478,9 @@ export default function SuperHomePage() {
 
       {/* Artifact modal — mobile */}
       {artifact && <ArtifactModal artifact={artifact} onClose={() => setArtifact(null)} />}
+
+      {/* Webview modal — for expanded card bubbles */}
+      {webviewCard && <WebviewModal card={webviewCard} onClose={() => setWebview(null)} />}
     </div>
   )
 }
