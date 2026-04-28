@@ -145,7 +145,11 @@ async function runRemote(c) {
       body: JSON.stringify({ text: c.input, role: c.role, language: c.language || 'auto' }),
       signal: ctl.signal,
     })
-    if (!resp.ok) return { error: `HTTP ${resp.status}` }
+    if (!resp.ok) {
+      // Surface the server's error body so failures are diagnosable.
+      const body = await resp.text().catch(() => '')
+      return { error: `HTTP ${resp.status}${body ? ` — ${body.slice(0, 200)}` : ''}` }
+    }
     const json = await resp.json()
     if (!json) return { error: 'no JSON' }
 
