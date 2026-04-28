@@ -574,6 +574,7 @@ export const AI_DEEP_DIVE_SCENARIOS = [
   {
     id: 'delayed_payments',
     title: 'Delayed Payments — Approval Backlog',
+    entryLabel: '⏳ Delayed Payments — Approval Backlog',
     persona: 'District Officer',
     description: 'Investigate payment delays caused by pending bot approvals.',
     roles: ['deo', 'state_secretary'],
@@ -645,9 +646,10 @@ LIMIT 3`,
   {
     id: 'monsoon_impact',
     title: 'Monsoon Impact on Payment Eligibility',
+    entryLabel: '🌧️ Monsoon Impact Analysis',
     persona: 'State Admin',
     description: "Investigate how monsoon season's low attendance affects IPMS payment approvals.",
-    roles: ['state_secretary'],
+    roles: ['deo', 'state_secretary'],
     turns: [
       {
         q: 'Which districts were most affected by monsoon for payment approvals in July-September?',
@@ -655,20 +657,26 @@ LIMIT 3`,
 `SELECT sa.district,
   COUNT(*) AS monsoon_total,
   COUNT(*) FILTER (WHERE mpc.eligibility_status='MANUAL') AS monsoon_manual,
-  ROUND(COUNT(*) FILTER (WHERE mpc.eligibility_status='MANUAL')*100.0/COUNT(*),1) AS monsoon_pct
+  ROUND(COUNT(*) FILTER (WHERE mpc.eligibility_status='MANUAL')*100.0/COUNT(*),1) AS monsoon_pct,
+  ROUND(non_monsoon_manual*100.0/non_monsoon_total,1) AS non_monsoon_pct,
+  ROUND(monsoon_pct - non_monsoon_pct,1) AS increase
 FROM monthly_payment_cycle mpc
 JOIN student_application sa ON mpc.student_id = sa."studentId"
 WHERE mpc.payment_month BETWEEN '2025-07' AND '2025-09'
 GROUP BY sa.district
 ORDER BY monsoon_pct DESC
-LIMIT 5`,
+LIMIT 8`,
         result: [
-          { district: 'DANG',    monsoon_total: '28,500', monsoon_manual: '17,100', monsoon_pct: '60.0%', non_monsoon_pct: '14.2%', increase: '+45.8 pp' },
-          { district: 'TAPI',    monsoon_total: '38,400', monsoon_manual: '21,100', monsoon_pct: '55.0%', non_monsoon_pct: '12.8%', increase: '+42.2 pp' },
-          { district: 'NAVSARI', monsoon_total: '52,800', monsoon_manual: '26,400', monsoon_pct: '50.0%', non_monsoon_pct: '11.5%', increase: '+38.5 pp' },
-          { district: 'VALSAD',  monsoon_total: '61,200', monsoon_manual: '27,500', monsoon_pct: '45.0%', non_monsoon_pct: '10.8%', increase: '+34.2 pp' },
+          { district: 'DANG',        monsoon_total: '28,500', monsoon_manual: '17,100', monsoon_pct: '60.0%', non_monsoon_pct: '14.2%', increase: '+45.8 pp' },
+          { district: 'TAPI',        monsoon_total: '38,400', monsoon_manual: '21,100', monsoon_pct: '55.0%', non_monsoon_pct: '12.8%', increase: '+42.2 pp' },
+          { district: 'NAVSARI',     monsoon_total: '52,800', monsoon_manual: '26,400', monsoon_pct: '50.0%', non_monsoon_pct: '11.5%', increase: '+38.5 pp' },
+          { district: 'VALSAD',      monsoon_total: '61,200', monsoon_manual: '27,500', monsoon_pct: '45.0%', non_monsoon_pct: '10.8%', increase: '+34.2 pp' },
+          { district: 'SURAT',       monsoon_total: '74,500', monsoon_manual: '29,800', monsoon_pct: '40.0%', non_monsoon_pct: '9.5%',  increase: '+30.5 pp' },
+          { district: 'BHARUCH',     monsoon_total: '46,200', monsoon_manual: '17,100', monsoon_pct: '37.0%', non_monsoon_pct: '8.9%',  increase: '+28.1 pp' },
+          { district: 'NARMADA',     monsoon_total: '22,800', monsoon_manual: '8,000',  monsoon_pct: '35.1%', non_monsoon_pct: '8.5%',  increase: '+26.6 pp' },
+          { district: 'PANCHMAHALS', monsoon_total: '52,400', monsoon_manual: '17,300', monsoon_pct: '33.0%', non_monsoon_pct: '8.2%',  increase: '+24.8 pp' },
         ],
-        insight: 'South Gujarat districts show a massive monsoon spike. DANG jumps from 14.2% manual approvals to 60.0% during Jul-Sep.',
+        insight: 'South Gujarat districts show a massive monsoon spike. DANG jumps from 14.2% manual approvals in non-monsoon months to 60% during Jul-Sep — a 45.8 percentage point increase. This proves the attendance drop is seasonal and monsoon-driven, not systemic.',
         followup: 'Show me the manual to auto approval ratio in those top affected districts — month by month',
       },
       {
@@ -684,12 +692,20 @@ JOIN student_application sa ON mpc.student_id = sa."studentId"
 WHERE sa.district IN ('DANG','TAPI','NAVSARI','VALSAD')
 GROUP BY sa.district, month`,
         result: [
-          { district: 'DANG', month: 'Jul', auto: '3,200', manual: '6,300', ratio: '1.97' },
-          { district: 'DANG', month: 'Aug', auto: '3,600', manual: '5,900', ratio: '1.64' },
-          { district: 'DANG', month: 'Sep', auto: '4,600', manual: '4,900', ratio: '1.07' },
-          { district: 'TAPI', month: 'Jul', auto: '4,800', manual: '8,000', ratio: '1.67' },
+          { district: 'DANG',    month: 'Jul', auto: '3,200', manual: '6,300', ratio: '1.97' },
+          { district: 'DANG',    month: 'Aug', auto: '3,600', manual: '5,900', ratio: '1.64' },
+          { district: 'DANG',    month: 'Sep', auto: '4,600', manual: '4,900', ratio: '1.07' },
+          { district: 'TAPI',    month: 'Jul', auto: '4,800', manual: '8,000', ratio: '1.67' },
+          { district: 'TAPI',    month: 'Aug', auto: '5,500', manual: '7,200', ratio: '1.31' },
+          { district: 'TAPI',    month: 'Sep', auto: '7,000', manual: '5,900', ratio: '0.84' },
+          { district: 'NAVSARI', month: 'Jul', auto: '7,800', manual: '9,800', ratio: '1.26' },
+          { district: 'NAVSARI', month: 'Aug', auto: '8,800', manual: '9,000', ratio: '1.02' },
+          { district: 'NAVSARI', month: 'Sep', auto: '9,800', manual: '7,600', ratio: '0.78' },
+          { district: 'VALSAD',  month: 'Jul', auto: '9,700', manual: '10,800', ratio: '1.11' },
+          { district: 'VALSAD',  month: 'Aug', auto: '11,200', manual: '9,300', ratio: '0.83' },
+          { district: 'VALSAD',  month: 'Sep', auto: '12,800', manual: '7,400', ratio: '0.58' },
         ],
-        insight: 'July is the worst. DANG has 1.97 manual approvals for every auto approval.',
+        insight: 'July is the worst — DANG has 1.97 manual approvals for every auto, meaning nearly 2x more students need manual review.',
         followup: 'What if we reduce the attendance threshold by 10% — from 80% to 70% — during monsoon months? How would manual approvals change?',
       },
       {
@@ -709,7 +725,7 @@ WHERE district IN ('DANG','TAPI','NAVSARI','VALSAD')`,
           { district: 'NAVSARI', auto_80: '26,400', manual_80: '26,400', auto_70: '39,600', manual_70: '13,200', shifted: '13,200', reduction: '50.0%' },
           { district: 'VALSAD',  auto_80: '33,700', manual_80: '27,500', auto_70: '46,350', manual_70: '14,850', shifted: '12,650', reduction: '46.0%' },
         ],
-        insight: 'Reducing threshold from 80% to 70% during monsoon would cut manual approvals by 46–55% across affected districts.',
+        insight: 'Reducing threshold from 80% to 70% during monsoon would cut manual approvals by 46-55% across affected districts. Total manual workload drops significantly.',
         followup: null,
       },
     ],

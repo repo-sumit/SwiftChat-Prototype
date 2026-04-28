@@ -966,7 +966,7 @@ function aiDirective(rest, role, profile) {
       variant: 'primary',
     }))
     const diveActions = dives.map(s => ({
-      label: `🧠 ${s.title}`,
+      label: s.entryLabel || `🧠 ${s.title}`,
       trigger: `dv:ai:dive:${s.id}:0`,
       variant: 'primary',
     }))
@@ -1030,7 +1030,7 @@ function aiDirective(rest, role, profile) {
       text: `🧠 Deep-dive scenarios — multi-turn investigations:`,
       html: aiDeepDiveMenuHtml(dives),
       actions: [
-        ...dives.map(s => ({ label: `▶️ ${s.title}`, trigger: `dv:ai:dive:${s.id}:0`, variant: 'primary' })),
+        ...dives.map(s => ({ label: s.entryLabel || `▶️ ${s.title}`, trigger: `dv:ai:dive:${s.id}:0`, variant: 'primary' })),
         { label: '✨ More AI queries', trigger: 'dv:ai:menu', variant: 'primary' },
       ],
     }

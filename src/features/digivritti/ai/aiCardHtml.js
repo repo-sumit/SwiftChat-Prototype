@@ -189,13 +189,14 @@ export function aiQuestionChipsHtml(queries) {
 // ─── Deep-dive scenario menu (chat preview list) ─────────────────────────────
 export function aiDeepDiveMenuHtml(scenarios) {
   if (!scenarios || scenarios.length === 0) return ''
-  return `<div style="font-family:${FONT};display:flex;flex-direction:column;gap:8px;margin-top:8px">
+  return `<div style="font-family:${FONT};display:flex;flex-direction:column;gap:8px;margin-top:10px">
     ${scenarios.map(s => `
       <div style="border:1px solid ${C.aiCardBorder};border-radius:10px;background:${C.aiCardBg};padding:12px 14px">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
           <span style="font-size:10px;font-weight:700;letter-spacing:0.3px;color:${C.brand};text-transform:uppercase">🧠 Deep Dive · ${esc(s.persona)}</span>
+          <span style="margin-left:auto;background:${C.surface};color:${C.textSecondary};font-size:10px;font-weight:600;letter-spacing:0.3px;padding:2px 8px;border-radius:999px;border:1px solid ${C.borderSubtle}">${(s.turns || []).length || 3} turns</span>
         </div>
-        <div style="font-size:13px;font-weight:600;color:${C.textPrimary};margin-bottom:2px">${esc(s.title)}</div>
+        <div style="font-size:13px;font-weight:600;color:${C.textPrimary};margin-bottom:2px">${esc(s.entryLabel || s.title)}</div>
         <div style="font-size:11px;color:${C.textSecondary};line-height:16px">${esc(s.description)}</div>
       </div>
     `).join('')}
