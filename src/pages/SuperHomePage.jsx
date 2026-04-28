@@ -1130,6 +1130,20 @@ function getRoleAlerts(role, profile) {
     { icon: '👥', label: 'Students', value: '8.2M', color: '#059669' },
     { icon: '📅', label: 'Avg Att.', value: '85.4%', color: '#16A34A' },
   ]
+  // PFMS — payment-side stats only.
+  if (role === 'pfms') return [
+    { icon: '🏦', label: 'Pending',   value: '12.4K', color: '#D97706' },
+    { icon: '✅', label: 'Disbursed', value: '₹428Cr', color: '#16A34A' },
+    { icon: '🔻', label: 'Failed',    value: '65',    color: '#DC2626' },
+    { icon: '📊', label: 'Success%',  value: '94.2%', color: '#386AF6' },
+  ]
+  // CRC — cluster approver stats.
+  if (role === 'crc') return [
+    { icon: '⏳', label: 'Pending',     value: '38',    color: '#D97706' },
+    { icon: '✅', label: 'Approved/mo', value: '156',   color: '#16A34A' },
+    { icon: '❌', label: 'Rejected/mo', value: '12',    color: '#DC2626' },
+    { icon: '📈', label: 'Approval%',   value: '92.9%', color: '#386AF6' },
+  ]
   return [ // parent
     { icon: '📅', label: 'Attendance', value: '74%', color: '#D97706' },
     { icon: '📊', label: 'Avg Score', value: '68%', color: '#386AF6' },
