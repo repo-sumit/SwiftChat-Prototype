@@ -11,7 +11,15 @@ import {
   STUDENTS, PERF_DATA, AT_RISK_STUDENTS, SCHOLARSHIP_DATA,
   DISTRICTS, STATE_SUMMARY, LEARNING_OUTCOMES, NAMO_LAXMI_APPS,
   SCHOOL_INFO, XAMTA_SAMPLE_RESULTS, getAttendanceHistory,
+  ATTENDANCE_30D, SUBJECT_MASTERY_12W, SCHOOL_GRADE_BREAKDOWN,
+  TOP_PERFORMERS, SCHOLARSHIP_FUNNEL, MONTHLY_DISBURSEMENT,
+  PAYMENT_FAILURES, attendance14d,
 } from '../data/mockData'
+import {
+  kpiGrid, lineChart, barChart, hBarList, donut, funnel,
+  sparkline, heatmap, gauge, sectionHeader, pillTone, miniStatRow,
+  tokens as CHART, fmt as fmtNum, ui as chartUi,
+} from '../utils/dashboardCharts'
 import { ROLE_BOTS, ROLE_SUGGESTIONS } from '../roles/roleConfig'
 import { dispatchDigiVritti, isDigiVrittiTrigger } from '../utils/digivrittiChat'
 import { groupByRecency, detectTool, TOOL_TITLES } from '../utils/chatHistory'
@@ -153,55 +161,115 @@ function buildLessonPlanArtifact(ctx) {
 function buildPerformanceArtifact(ctx) {
   const grade = ctx.grade === 'All' ? '5' : (ctx.grade || '5')
   const d = PERF_DATA[grade] || PERF_DATA[5]
-  const subjects = [
-    { name:'Mathemat..', val:d.math, color:DS.brand },
-    { name:'Science',    val:d.sci,  color:DS.brand },
-    { name:'Gujarati',   val:d.guj,  color:DS.brand },
-  ]
-  const maxH = 100
-  const chartBars = subjects.map(s => {
-    const h = Math.round((s.val / 100) * maxH)
-    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-      <span style="font-size:14px;font-weight:600;letter-spacing:-0.2px;color:${DS.textPrimary};font-family:${DS.font}">${s.val}%</span>
-      <div style="width:100%;height:${h}px;background:${s.color};border-radius:${DS.radiusSm}px ${DS.radiusSm}px 0 0"></div>
-      <span style="font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.textTertiary};margin-top:4px;font-family:${DS.font}">${s.name}</span>
-    </div>`
+  // Distribution buckets: <60 / 60-74 / 75-84 / 85+
+  const dist = { basic: 0, proficient: 0, advanced: 0, struggling: 0 }
+  d.students.forEach(s => {
+    const avg = (s.m + s.s + s.g) / 3
+    if (avg >= 85) dist.advanced++
+    else if (avg >= 75) dist.proficient++
+    else if (avg >= 60) dist.basic++
+    else dist.struggling++
+  })
+  const total = d.students.length
+  const presentToday = Math.round(total * (ATTENDANCE_30D.school.at(-1) / 100))
+
+  const tableRows = d.students.map((s, i) => {
+    const avg = Math.round((s.m + s.s + s.g) / 3)
+    const trend = sparkline({
+      values: [avg - 8, avg - 5, avg - 6, avg - 3, avg - 1, avg, avg + 1].map(v => Math.max(40, Math.min(100, v))),
+      color: avg >= 75 ? CHART.success : avg >= 60 ? CHART.brand : CHART.warning,
+      width: 60, height: 20,
+    })
+    return `<tr style="border-top:1px solid ${DS.borderSubtle}">
+      <td style="padding:10px 8px;font-size:13px;font-weight:600;color:${DS.textPrimary};font-family:${DS.font}">
+        <span style="display:inline-flex;align-items:center;gap:8px">
+          <span style="width:24px;height:24px;border-radius:999px;background:${CHART.brandSubtle};color:${CHART.brand};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">${(i+1).toString().padStart(2,'0')}</span>
+          ${s.name}
+        </span>
+      </td>
+      <td style="padding:10px 8px;font-size:13px;text-align:center;color:${DS.textPrimary};font-family:${DS.font}">${s.m}</td>
+      <td style="padding:10px 8px;font-size:13px;text-align:center;color:${DS.textPrimary};font-family:${DS.font}">${s.s}</td>
+      <td style="padding:10px 8px;font-size:13px;text-align:center;color:${DS.textPrimary};font-family:${DS.font}">${s.g}</td>
+      <td style="padding:10px 8px;font-size:13px;text-align:center;font-weight:600;color:${DS.textPrimary};font-family:${DS.font}">${avg}%</td>
+      <td style="padding:10px 8px;text-align:center">${trend}</td>
+      <td style="padding:10px 8px;text-align:center">${levelPill(s.lvl)}</td>
+    </tr>`
   }).join('')
-  const tableRows = d.students.map(s => `
-    <tr style="border-top:1px solid ${DS.borderSubtle}">
-      <td style="padding:12px 8px;font-size:14px;font-weight:500;letter-spacing:0.1px;color:${DS.textPrimary};font-family:${DS.font}">${s.name}</td>
-      <td style="padding:12px 8px;font-size:14px;font-weight:400;letter-spacing:0.25px;text-align:center;color:${DS.textPrimary};font-family:${DS.font}">${s.m}%</td>
-      <td style="padding:12px 8px;font-size:14px;font-weight:400;letter-spacing:0.25px;text-align:center;color:${DS.textPrimary};font-family:${DS.font}">${s.s}%</td>
-      <td style="padding:12px 8px;font-size:14px;font-weight:400;letter-spacing:0.25px;text-align:center;color:${DS.textPrimary};font-family:${DS.font}">${s.g}%</td>
-      <td style="padding:12px 8px;text-align:center">${levelPill(s.lvl)}</td>
-    </tr>`).join('')
+
   const html = `
     <div style="font-family:${DS.font};padding:0 4px;color:${DS.textPrimary}">
-      <h2 style="font-size:24px;font-weight:600;line-height:32px;margin:0 0 4px">Class Performance</h2>
-      <p style="color:${DS.textSecondary};font-size:12px;font-weight:400;letter-spacing:0.4px;margin:0 0 24px">${SCHOOL} · Grade ${ctx.grade === 'All' ? '5 (Sample)' : grade}</p>
-      <div style="border:1px solid ${DS.borderDefault};border-radius:${DS.radiusLg}px;padding:16px;margin-bottom:16px;background:${DS.surfaceRaised}">
-        <h4 style="font-size:14px;font-weight:600;letter-spacing:-0.2px;margin:0 0 16px;color:${DS.textPrimary}">Subject Averages</h4>
-        <div style="display:flex;gap:16px;align-items:flex-end;height:${maxH + 30}px">
-          ${chartBars}
+      ${sectionHeader({
+        title: `Class Performance — Grade ${grade}`,
+        subtitle: `${SCHOOL} · ${TODAY}`,
+        badge: `${total} students`,
+        gradient: true,
+      })}
+      ${kpiGrid([
+        { label: 'Class Avg',        value: Math.round((d.math + d.sci + d.guj) / 3) + '%', tone: 'brand',   icon: '📊' },
+        { label: 'Today Attendance', value: presentToday + '/' + total,                      tone: 'success', icon: '📅', sub: ATTENDANCE_30D.school.at(-1) + '%' },
+        { label: 'Top scorer',       value: Math.max(...d.students.map(s => Math.round((s.m+s.s+s.g)/3))) + '%', tone: 'purple', icon: '🥇' },
+        { label: 'Need help',        value: dist.struggling + dist.basic + ' students',     tone: 'warning', icon: '🎯', sub: 'below 75%' },
+      ])}
+
+      ${barChart({
+        title: 'Subject averages',
+        sub: 'Class-wide · current term',
+        items: [
+          { label: 'Math',     value: d.math, color: CHART.brand },
+          { label: 'Science',  value: d.sci,  color: CHART.purple },
+          { label: 'Gujarati', value: d.guj,  color: CHART.success },
+        ],
+        height: 160,
+      })}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${donut({
+          title: 'Mastery distribution',
+          centerValue: total,
+          centerLabel: 'students',
+          segments: [
+            { label: 'Advanced (85+)',    value: dist.advanced,   color: CHART.success },
+            { label: 'Proficient (75-84)', value: dist.proficient, color: CHART.brand },
+            { label: 'Basic (60-74)',      value: dist.basic,      color: CHART.warning },
+            { label: 'Struggling (<60)',   value: dist.struggling, color: CHART.error },
+          ],
+        })}
+        ${lineChart({
+          title: 'Class avg — last 12 weeks',
+          labels: SUBJECT_MASTERY_12W.labels,
+          series: [
+            { name: 'Math',     color: CHART.brand,   values: SUBJECT_MASTERY_12W.Math },
+            { name: 'Science',  color: CHART.purple,  values: SUBJECT_MASTERY_12W.Science },
+            { name: 'Gujarati', color: CHART.success, values: SUBJECT_MASTERY_12W.Gujarati },
+          ],
+          height: 160,
+        })}
+      </div>
+
+      ${chartUi.panelStart()}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <h4 style="font-size:14px;font-weight:600;margin:0;color:${DS.textPrimary}">Student details</h4>
+          <span style="font-size:11px;color:${CHART.textTertiary}">Tap a row to drill into a student</span>
         </div>
-      </div>
-      <div style="border:1px solid ${DS.borderDefault};border-radius:${DS.radiusLg}px;padding:16px;background:${DS.surfaceRaised}">
-        <h4 style="font-size:14px;font-weight:600;letter-spacing:-0.2px;margin:0 0 12px;color:${DS.textPrimary}">Student Details</h4>
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr>
-              <th style="text-align:left;padding:8px;font-size:11px;font-weight:500;color:${DS.textTertiary};letter-spacing:0.2px;text-transform:uppercase;font-family:${DS.font}">Student</th>
-              <th style="padding:8px;font-size:11px;font-weight:500;color:${DS.textTertiary};letter-spacing:0.2px;text-transform:uppercase;font-family:${DS.font}">Math</th>
-              <th style="padding:8px;font-size:11px;font-weight:500;color:${DS.textTertiary};letter-spacing:0.2px;text-transform:uppercase;font-family:${DS.font}">Sci</th>
-              <th style="padding:8px;font-size:11px;font-weight:500;color:${DS.textTertiary};letter-spacing:0.2px;text-transform:uppercase;font-family:${DS.font}">Guj</th>
-              <th style="padding:8px;font-size:11px;font-weight:500;color:${DS.textTertiary};letter-spacing:0.2px;text-transform:uppercase;font-family:${DS.font}">Level</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <table style="width:100%;border-collapse:collapse;min-width:560px">
+            <thead>
+              <tr style="background:${CHART.surfaceTint}">
+                <th style="text-align:left;padding:10px 8px;font-size:10px;font-weight:600;color:${CHART.textTertiary};letter-spacing:0.3px;text-transform:uppercase">Student</th>
+                <th style="padding:10px 8px;font-size:10px;font-weight:600;color:${CHART.textTertiary};letter-spacing:0.3px;text-transform:uppercase;text-align:center">Math</th>
+                <th style="padding:10px 8px;font-size:10px;font-weight:600;color:${CHART.textTertiary};letter-spacing:0.3px;text-transform:uppercase;text-align:center">Sci</th>
+                <th style="padding:10px 8px;font-size:10px;font-weight:600;color:${CHART.textTertiary};letter-spacing:0.3px;text-transform:uppercase;text-align:center">Guj</th>
+                <th style="padding:10px 8px;font-size:10px;font-weight:600;color:${CHART.textTertiary};letter-spacing:0.3px;text-transform:uppercase;text-align:center">Avg</th>
+                <th style="padding:10px 8px;font-size:10px;font-weight:600;color:${CHART.textTertiary};letter-spacing:0.3px;text-transform:uppercase;text-align:center">Trend</th>
+                <th style="padding:10px 8px;font-size:10px;font-weight:600;color:${CHART.textTertiary};letter-spacing:0.3px;text-transform:uppercase;text-align:center">Level</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      ${chartUi.panelEnd()}
     </div>`
-  return { title:'Performance', icon:'📊', html }
+  return { title: 'Performance', icon: '📊', html }
 }
 
 function buildReportCardArtifact(ctx) {
@@ -243,70 +311,173 @@ function buildReportCardArtifact(ctx) {
 }
 
 function buildScholarshipArtifact() {
-  const schemes = SCHOLARSHIP_DATA || [
-    { name:'Namo Laxmi Yojana', eligible:28, applied:24, approved:20 },
-    { name:'DBT Scholarship',   eligible:35, applied:30, approved:28 },
-    { name:'EWS Admission',     eligible:12, applied:10, approved:9 },
-  ]
+  const schemes = SCHOLARSHIP_DATA || []
+  const totalEligible = schemes.reduce((s, x) => s + x.eligible, 0)
+  const totalApplied  = schemes.reduce((s, x) => s + x.applied, 0)
+  const totalApproved = schemes.reduce((s, x) => s + x.approved, 0)
+  const totalPending  = schemes.reduce((s, x) => s + (x.pending || 0), 0)
+  const totalRejected = schemes.reduce((s, x) => s + (x.rejected || 0), 0)
+
   const html = `
     <div style="font-family:${DS.font};padding:0 4px;color:${DS.textPrimary}">
-      <h2 style="font-size:24px;font-weight:600;line-height:32px;margin:0 0 4px">Scholarship Status</h2>
-      <p style="color:${DS.textSecondary};font-size:12px;font-weight:400;letter-spacing:0.4px;margin:0 0 24px">${SCHOOL} · ${TODAY}</p>
-      ${schemes.map(s=>`
-        <div style="border:1px solid ${DS.borderDefault};border-radius:${DS.radiusLg}px;padding:16px;margin-bottom:12px;background:${DS.surfaceRaised}">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <h4 style="font-size:16px;font-weight:600;letter-spacing:0.1px;margin:0;color:${DS.textPrimary}">${s.name}</h4>
-            ${pill(Math.round(s.approved/s.eligible*100))}
+      ${sectionHeader({
+        title: 'Scholarship Status',
+        subtitle: `${SCHOOL} · ${TODAY}`,
+        badge: schemes.length + ' schemes',
+        gradient: true,
+      })}
+      ${kpiGrid([
+        { label: 'Eligible',    value: totalEligible,                                                      tone: 'brand',   icon: '👥' },
+        { label: 'Applied',     value: totalApplied,                                                       tone: 'purple',  icon: '📝', sub: Math.round(totalApplied/totalEligible*100) + '% conversion' },
+        { label: 'Approved',    value: totalApproved,                                                      tone: 'success', icon: '✅', sub: Math.round(totalApproved/totalApplied*100) + '% approval' },
+        { label: 'Pending / Rejected', value: totalPending + ' / ' + totalRejected,                       tone: 'warning', icon: '⏳' },
+      ])}
+
+      ${funnel({
+        title: 'Overall funnel',
+        sub: 'Eligible → Applied → Approved · all schemes',
+        stages: [
+          { label: 'Eligible', value: totalEligible, color: CHART.brand },
+          { label: 'Applied',  value: totalApplied,  color: CHART.purple },
+          { label: 'Approved', value: totalApproved, color: CHART.success },
+        ],
+        suffix: ' students',
+      })}
+
+      ${schemes.map(s => {
+        const pct = Math.round(s.approved / s.eligible * 100)
+        return `<div style="border:1px solid ${DS.borderDefault};border-radius:14px;padding:16px;margin-bottom:12px;background:${DS.surfaceRaised};box-shadow:0 1px 2px rgba(14,14,14,0.04)">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:38px;height:38px;border-radius:10px;background:${s.color || CHART.brand}22;display:flex;align-items:center;justify-content:center;font-size:18px">🏅</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin:0;color:${DS.textPrimary}">${s.name}</h4>
+                <div style="font-size:11px;color:${DS.textTertiary};margin-top:2px">Approval rate: ${pct}%</div>
+              </div>
+            </div>
+            ${pillTone(pct)}
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
-            ${[['Eligible',s.eligible,DS.textPrimary],['Applied',s.applied,DS.brand],['Approved',s.approved,DS.success]].map(([l,v,c])=>`
-              <div style="background:${DS.surface};border-radius:${DS.radiusMd}px;padding:12px">
-                <div style="font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.textSecondary}">${l}</div>
-                <div style="font-size:24px;font-weight:600;line-height:32px;color:${c};margin-top:4px">${v}</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">
+            ${[
+              ['Eligible', s.eligible, DS.textPrimary, CHART.surfaceTint],
+              ['Applied',  s.applied,  CHART.brand,    CHART.brandSubtle],
+              ['Approved', s.approved, CHART.successText, CHART.successSubtle],
+              ['Pending',  s.pending || 0, CHART.warningText, CHART.warningSubtle],
+              ['Rejected', s.rejected || 0, CHART.errorText, CHART.errorSubtle],
+            ].map(([l, v, c, bg]) => `
+              <div style="background:${bg};border-radius:10px;padding:10px 6px">
+                <div style="font-size:9px;font-weight:600;letter-spacing:0.3px;color:${DS.textSecondary};text-transform:uppercase">${l}</div>
+                <div style="font-size:18px;font-weight:700;line-height:24px;color:${c};margin-top:2px">${v}</div>
               </div>`).join('')}
           </div>
-        </div>`).join('')}
+          <div style="margin-top:12px;height:8px;background:${CHART.borderSubtle};border-radius:4px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg, ${s.color || CHART.brand}, ${s.color || CHART.brand}cc);border-radius:4px"></div>
+          </div>
+        </div>`
+      }).join('')}
+
+      ${barChart({
+        title: 'Monthly disbursement (district-level)',
+        sub: '₹ Cr · last 6 months',
+        items: MONTHLY_DISBURSEMENT.labels.map((m, i) => ({
+          label: m,
+          value: MONTHLY_DISBURSEMENT.district.disbursed[i],
+          sub: '₹' + MONTHLY_DISBURSEMENT.district.disbursed[i] + ' Cr',
+          color: i === MONTHLY_DISBURSEMENT.labels.length - 1 ? CHART.success : CHART.brandSubtleStrong,
+        })),
+        suffix: '',
+      })}
     </div>`
-  return { title:'Scholarships', icon:'🏅', html }
+  return { title: 'Scholarships', icon: '🏅', html }
 }
 
 function buildAtRiskArtifact() {
   const students = AT_RISK_STUDENTS || []
-  const high = students.filter(s => s.risk === 'high')
+  const high   = students.filter(s => s.risk === 'high')
   const medium = students.filter(s => s.risk === 'medium')
-  const riskColor = r => r === 'high' ? DS.errorText : DS.warningText
-  const riskBg = r => r === 'high' ? DS.errorSubtle : DS.warningSubtle
-  const rows = students.map(s => `
-    <div style="display:flex;align-items:center;padding:12px;border:1px solid ${DS.borderSubtle};border-radius:${DS.radiusLg}px;margin-bottom:8px;gap:12px;background:${DS.surfaceRaised}">
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:600;letter-spacing:-0.2px;color:${DS.textPrimary}">${s.name}</div>
-        <div style="font-size:12px;font-weight:400;letter-spacing:0.4px;color:${DS.textSecondary};margin-top:2px">${s.reason || 'Low attendance'}</div>
+  const byGrade = students.reduce((acc, s) => { acc[s.grade] = (acc[s.grade] || 0) + 1; return acc }, {})
+  const reasonCounts = students.reduce((acc, s) => { acc[s.reason] = (acc[s.reason] || 0) + 1; return acc }, {})
+  const reasonItems = Object.entries(reasonCounts).map(([k, v]) => ({ label: k, value: v, color: CHART.error }))
+
+  const rows = students.map((s, i) => {
+    const trend = sparkline({
+      values: attendance14d(i + 1, s.attendance),
+      color: s.risk === 'high' ? CHART.error : CHART.warning,
+      width: 100, height: 24,
+    })
+    return `<div style="display:flex;align-items:center;padding:12px;border:1px solid ${DS.borderSubtle};border-radius:12px;margin-bottom:8px;gap:12px;background:${DS.surfaceRaised}">
+      <div style="width:40px;height:40px;border-radius:999px;background:${s.risk === 'high' ? CHART.errorSubtle : CHART.warningSubtle};color:${s.risk === 'high' ? CHART.errorText : CHART.warningText};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">${s.name.split(' ').map(n => n[0]).slice(0, 2).join('')}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:${DS.textPrimary}">${s.name} <span style="font-size:11px;font-weight:500;color:${CHART.textTertiary}">· Class ${s.grade}</span></div>
+        <div style="font-size:11px;color:${CHART.textSecondary};margin-top:2px">${s.reason}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <span style="font-size:10px;color:${CHART.textTertiary}">14-day attendance</span>
+          ${trend}
+        </div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:12px;font-weight:400;letter-spacing:0.4px;color:${DS.textSecondary}">Att: <strong style="color:${DS.textPrimary};font-weight:600">${s.attendance}%</strong></div>
-        <span style="background:${riskBg(s.risk)};color:${riskColor(s.risk)};font-size:11px;font-weight:500;letter-spacing:0.2px;padding:2px 10px;border-radius:${DS.radiusFull}px;display:inline-block;margin-top:4px">${s.risk?.toUpperCase()}</span>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:18px;font-weight:700;color:${s.risk === 'high' ? CHART.errorText : CHART.warningText}">${s.attendance}%</div>
+        <div style="font-size:10px;color:${CHART.textTertiary};margin-top:2px">${s.days} absences</div>
+        <span style="background:${s.risk === 'high' ? CHART.errorSubtle : CHART.warningSubtle};color:${s.risk === 'high' ? CHART.errorText : CHART.warningText};font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block;margin-top:4px;letter-spacing:0.3px">${s.risk.toUpperCase()}</span>
       </div>
-    </div>`).join('')
+    </div>`
+  }).join('')
+
   const html = `
     <div style="font-family:${DS.font};padding:0 4px;color:${DS.textPrimary}">
-      <h2 style="font-size:24px;font-weight:600;line-height:32px;margin:0 0 4px">At-Risk Students</h2>
-      <p style="color:${DS.textSecondary};font-size:12px;font-weight:400;letter-spacing:0.4px;margin:0 0 24px">${SCHOOL} · ${TODAY}</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-        <div style="border:1px solid ${DS.errorSubtle};border-radius:${DS.radiusLg}px;padding:16px;background:${DS.errorSubtle}">
-          <div style="font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.errorText};margin-bottom:8px;text-transform:uppercase">High Risk</div>
-          <div style="font-size:24px;font-weight:600;line-height:32px;color:${DS.errorText}">${high.length}</div>
-        </div>
-        <div style="border:1px solid ${DS.warningSubtle};border-radius:${DS.radiusLg}px;padding:16px;background:${DS.warningSubtle}">
-          <div style="font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.warningText};margin-bottom:8px;text-transform:uppercase">Medium Risk</div>
-          <div style="font-size:24px;font-weight:600;line-height:32px;color:${DS.warningText}">${medium.length}</div>
-        </div>
+      ${sectionHeader({
+        title: 'At-Risk Students',
+        subtitle: `${SCHOOL} · early-warning system`,
+        badge: students.length + ' flagged',
+        gradient: true,
+      })}
+      ${kpiGrid([
+        { label: 'High risk',     value: high.length,    tone: 'error',   icon: '🔴', sub: 'needs urgent action' },
+        { label: 'Medium risk',   value: medium.length,  tone: 'warning', icon: '🟡', sub: 'monitor closely' },
+        { label: 'Avg attendance', value: Math.round(students.reduce((s, x) => s + x.attendance, 0) / students.length) + '%', tone: 'brand', icon: '📅' },
+        { label: 'Avg score',     value: Math.round(students.reduce((s, x) => s + x.score, 0) / students.length) + '%', tone: 'purple', icon: '📊' },
+      ])}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${donut({
+          title: 'Risk distribution',
+          centerValue: students.length,
+          centerLabel: 'students',
+          segments: [
+            { label: 'High risk',   value: high.length,    color: CHART.error },
+            { label: 'Medium risk', value: medium.length,  color: CHART.warning },
+          ],
+        })}
+        ${barChart({
+          title: 'By grade',
+          items: Object.entries(byGrade).map(([g, n]) => ({
+            label: 'Grade ' + g,
+            value: n,
+            color: CHART.brand,
+          })),
+          suffix: '',
+          height: 160,
+        })}
       </div>
-      <div>${rows}</div>
-      <button style="width:100%;margin-top:12px;padding:16px;background:${DS.brand};color:${DS.textInverse};border:none;border-radius:${DS.radiusFull}px;font-size:16px;font-weight:600;letter-spacing:0.1px;cursor:pointer;font-family:${DS.font}">
-        📨 Send Parent Alerts for All High Risk
+
+      ${hBarList({
+        title: 'Top reasons',
+        sub: 'Why students are flagged',
+        items: reasonItems,
+        suffix: '',
+        maxValue: Math.max(...reasonItems.map(i => i.value)),
+      })}
+
+      ${chartUi.panelStart()}
+        <h4 style="font-size:14px;font-weight:600;margin:0 0 12px;color:${DS.textPrimary}">Student details</h4>
+        ${rows}
+      ${chartUi.panelEnd()}
+
+      <button style="width:100%;margin-top:8px;padding:14px;background:linear-gradient(135deg, ${CHART.brand}, ${CHART.brandHover});color:#fff;border:none;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;font-family:${DS.font};box-shadow:0 4px 12px rgba(56,106,246,0.25)">
+        📨 Send Parent Alerts to all ${high.length} high-risk
       </button>
     </div>`
-  return { title:'At-Risk Students', icon:'⚠️', html }
+  return { title: 'At-Risk Students', icon: '⚠️', html }
 }
 
 function buildNamoLaxmiArtifact() {
@@ -342,106 +513,344 @@ function buildNamoLaxmiArtifact() {
 
 function buildDashboardArtifact(ctx) {
   const scope = ctx.scope || 'school'
-  const purple = '#7C3AED' // accent for variety; not in core palette but acceptable
-  let kpis, title, subtitle, trendData
-  if (scope === 'state') {
-    const s = STATE_SUMMARY || {}
-    kpis = [
-      { label:'Total Schools',   val: s.totalSchools?.toLocaleString() || '33,248', color:DS.brand },
-      { label:'Total Students',  val: (s.totalStudents ? (s.totalStudents/1000000).toFixed(1)+'M' : '8.2M'), color:purple },
-      { label:'Avg Attendance',  val: (s.avgAttendance||85.4)+'%', color:DS.success },
-      { label:'Scholarship Rate',val: (s.scholarshipRate||79.2)+'%', color:DS.warning },
-    ]
-    title = 'State Dashboard — Gujarat'
-    subtitle = `Ministry of Education · ${TODAY}`
-    trendData = [82,84,83,86,85,87,88]
-  } else if (scope === 'district') {
-    const d = DISTRICTS?.[0] || {}
-    kpis = [
-      { label:'Total Schools',  val: d.schools?.toString() || '412',   color:DS.brand },
-      { label:'Total Students', val: d.students?.toLocaleString() || '24,831', color:purple },
-      { label:'Avg Attendance', val: (d.attendance||84.2)+'%', color:DS.success },
-      { label:'Scheme Rate',    val: (d.scholarshipRate||78.6)+'%', color:DS.warning },
-    ]
-    title = 'District Dashboard — Ahmedabad'
-    subtitle = `District Education Office · ${TODAY}`
-    trendData = [80,83,82,85,84,86,87]
-  } else {
-    kpis = [
-      { label:'Total Students',   val:'342',   color:DS.brand },
-      { label:'Today Attendance', val:'88.3%', color:DS.success },
-      { label:'Avg Score',        val:'74.1%', color:DS.warning },
-      { label:'Scheme Rate',      val:'82.5%', color:purple },
-    ]
-    title = 'School Dashboard'
-    subtitle = `${SCHOOL} · ${TODAY}`
-    trendData = [82,86,84,88,85,87,88]
-  }
-  const kpiHtml = kpis.map(k=>`
-    <div style="border:1px solid ${DS.borderDefault};border-radius:${DS.radiusLg}px;padding:16px;background:${DS.surfaceRaised}">
-      <div style="font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.textSecondary};margin-bottom:8px">${k.label}</div>
-      <div style="font-size:24px;font-weight:600;line-height:32px;color:${k.color}">${k.val}</div>
-    </div>`).join('')
+  if (scope === 'state')    return buildStateDashboard()
+  if (scope === 'district') return buildDistrictDashboard()
+  return buildSchoolDashboard()
+}
+
+function buildSchoolDashboard() {
+  const totalStudents = SCHOOL_GRADE_BREAKDOWN.reduce((s, g) => s + g.total, 0)
+  const todayAtt = ATTENDANCE_30D.school[ATTENDANCE_30D.school.length - 1]
+  const yesterdayAtt = ATTENDANCE_30D.school[ATTENDANCE_30D.school.length - 2]
+  const delta = (todayAtt - yesterdayAtt).toFixed(1)
   const html = `
     <div style="font-family:${DS.font};padding:0 4px;color:${DS.textPrimary}">
-      <h2 style="font-size:24px;font-weight:600;line-height:32px;margin:0 0 4px">${title}</h2>
-      <p style="color:${DS.textSecondary};font-size:12px;font-weight:400;letter-spacing:0.4px;margin:0 0 24px">${subtitle}</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">${kpiHtml}</div>
-      <div style="border:1px solid ${DS.borderDefault};border-radius:${DS.radiusLg}px;padding:16px;background:${DS.surfaceRaised}">
-        <h4 style="font-size:14px;font-weight:600;letter-spacing:-0.2px;margin:0 0 12px;color:${DS.textPrimary}">Attendance Trend (Last 7 Days)</h4>
-        <div style="display:flex;gap:8px;align-items:flex-end;height:96px">
-          ${trendData.map((v,i)=>`
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-              <div style="width:100%;height:${Math.round(v*0.8)}px;background:${i===6?DS.brand:DS.brandSubtleStrong};border-radius:${DS.radiusSm}px ${DS.radiusSm}px 0 0"></div>
-              <span style="font-size:10px;font-weight:400;letter-spacing:0.2px;color:${DS.textTertiary}">${['M','T','W','T','F','S','T'][i]}</span>
-            </div>`).join('')}
-        </div>
+      ${sectionHeader({
+        title: 'School Dashboard',
+        subtitle: `${SCHOOL} · ${TODAY}`,
+        badge: 'Live',
+        gradient: true,
+      })}
+      ${kpiGrid([
+        { label: 'Total Students', value: fmtNum(totalStudents), tone: 'brand',   icon: '👨‍🎓', sub: 'Class 3, 5, 6, 8' },
+        { label: 'Today Attendance', value: todayAtt + '%', tone: 'success', icon: '📅', trend: { delta: (delta >= 0 ? '+' : '') + delta + '%', up: delta >= 0 } },
+        { label: 'Avg Score',  value: '74.1%', tone: 'warning', icon: '📊', sub: 'XAMTA: last 30 days' },
+        { label: 'Scheme Rate', value: '82.5%', tone: 'purple',  icon: '🏅', sub: 'Namo Laxmi + DBT' },
+      ], { columns: 'auto-fit' })}
+
+      ${lineChart({
+        title: 'Attendance — last 30 days',
+        sub: 'Daily school-wide attendance %',
+        labels: ATTENDANCE_30D.labels,
+        series: [{ name: 'Attendance', color: CHART.brand, values: ATTENDANCE_30D.school }],
+        height: 180,
+      })}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${donut({
+          title: 'Grade enrolment',
+          sub: 'Class-wise student count',
+          centerValue: totalStudents,
+          centerLabel: 'students',
+          segments: SCHOOL_GRADE_BREAKDOWN.map(g => ({ label: g.grade, value: g.total })),
+        })}
+        ${barChart({
+          title: 'Subject mastery — current week',
+          items: [
+            { label: 'Math',     value: SUBJECT_MASTERY_12W.Math.at(-1),     color: CHART.brand },
+            { label: 'Science',  value: SUBJECT_MASTERY_12W.Science.at(-1),  color: CHART.purple },
+            { label: 'Gujarati', value: SUBJECT_MASTERY_12W.Gujarati.at(-1), color: CHART.success },
+            { label: 'English',  value: SUBJECT_MASTERY_12W.English.at(-1),  color: CHART.warning },
+          ],
+          height: 180,
+        })}
       </div>
-      ${scope !== 'school' && DISTRICTS ? `
-      <div style="border:1px solid ${DS.borderDefault};border-radius:${DS.radiusLg}px;padding:16px;margin-top:16px;background:${DS.surfaceRaised}">
-        <h4 style="font-size:14px;font-weight:600;letter-spacing:-0.2px;margin:0 0 12px;color:${DS.textPrimary}">${scope==='state'?'Top Districts':'Schools Snapshot'}</h4>
-        ${(DISTRICTS||[]).slice(0,4).map(d=>`
-          <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid ${DS.borderSubtle}">
-            <span style="flex:1;font-size:14px;font-weight:500;letter-spacing:0.1px;color:${DS.textPrimary}">${d.name}</span>
-            ${pill(d.attendance)}
+
+      ${lineChart({
+        title: 'Subject mastery — last 12 weeks',
+        sub: 'XAMTA-derived weekly average',
+        labels: SUBJECT_MASTERY_12W.labels,
+        series: [
+          { name: 'Math',     color: CHART.brand,   values: SUBJECT_MASTERY_12W.Math },
+          { name: 'Science',  color: CHART.purple,  values: SUBJECT_MASTERY_12W.Science },
+          { name: 'Gujarati', color: CHART.success, values: SUBJECT_MASTERY_12W.Gujarati },
+          { name: 'English',  color: CHART.warning, values: SUBJECT_MASTERY_12W.English },
+        ],
+        height: 200,
+      })}
+
+      ${chartUi.panelStart()}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <h4 style="font-size:14px;font-weight:600;margin:0;color:${DS.textPrimary}">Top performers</h4>
+            <div style="font-size:11px;color:${DS.textTertiary};margin-top:2px">Across all classes · last term</div>
+          </div>
+          <span style="background:${CHART.brandSubtle};color:${CHART.brand};font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px">Top 5</span>
+        </div>
+        ${TOP_PERFORMERS.map((s, i) => `
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid ${DS.borderSubtle}">
+            <div style="width:28px;height:28px;border-radius:999px;background:${i === 0 ? CHART.warning : i < 3 ? CHART.brandSubtle : CHART.borderSubtle};color:${i === 0 ? '#fff' : i < 3 ? CHART.brand : CHART.textSecondary};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${i === 0 ? '🥇' : i < 3 ? '🏅' : i + 1}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:${DS.textPrimary}">${s.name}</div>
+              <div style="font-size:11px;color:${DS.textTertiary}">Class ${s.grade} · attendance ${s.attendance}%</div>
+            </div>
+            ${pillTone(s.score)}
           </div>`).join('')}
-      </div>` : ''}
+      ${chartUi.panelEnd()}
+
+      ${chartUi.panelStart()}
+        <h4 style="font-size:14px;font-weight:600;margin:0 0 10px;color:${DS.textPrimary}">⚠️ Items that need attention</h4>
+        ${miniStatRow([
+          { icon: '🔴', label: 'High-risk students',  value: AT_RISK_STUDENTS.filter(s=>s.risk==='high').length + ' students',     bg: CHART.errorSubtle },
+          { icon: '🟡', label: 'Medium-risk',          value: AT_RISK_STUDENTS.filter(s=>s.risk==='medium').length + ' students',  bg: CHART.warningSubtle },
+          { icon: '📋', label: 'Pending Namo Laxmi',  value: NAMO_LAXMI_APPS.filter(a=>a.status==='pending').length + ' apps',      bg: CHART.brandSubtle },
+          { icon: '👨‍🏫', label: 'Teachers reporting', value: '14 / 16',                                                              bg: CHART.purpleSubtle },
+        ])}
+      ${chartUi.panelEnd()}
     </div>`
-  return { title: scope === 'state' ? 'State Dashboard' : scope === 'district' ? 'District Dashboard' : 'School Dashboard', icon:'📊', html }
+  return { title: 'School Dashboard', icon: '📊', html }
+}
+
+function buildDistrictDashboard() {
+  const totalSchools  = DISTRICTS.reduce((s, d) => s + d.schools, 0)
+  const totalStudents = DISTRICTS.reduce((s, d) => s + d.students, 0)
+  const totalRisk     = DISTRICTS.reduce((s, d) => s + d.riskStudents, 0)
+  const avgAtt        = (DISTRICTS.reduce((s, d) => s + d.attendance, 0) / DISTRICTS.length).toFixed(1)
+
+  const html = `
+    <div style="font-family:${DS.font};padding:0 4px;color:${DS.textPrimary}">
+      ${sectionHeader({
+        title: 'District Dashboard — Ahmedabad',
+        subtitle: `District Education Office · ${TODAY}`,
+        badge: 'DEO',
+        gradient: true,
+      })}
+      ${kpiGrid([
+        { label: 'Schools',           value: fmtNum(totalSchools),  tone: 'brand',   icon: '🏫', sub: '8 blocks · 412 villages' },
+        { label: 'Students',          value: fmtNum(totalStudents), tone: 'purple',  icon: '👥', sub: 'across all grades' },
+        { label: 'Avg Attendance',    value: avgAtt + '%',          tone: 'success', icon: '📅', trend: { delta: '+2.3%', up: true } },
+        { label: 'High-risk students', value: fmtNum(totalRisk),     tone: 'error',   icon: '⚠️', sub: 'flagged this month' },
+      ])}
+
+      ${lineChart({
+        title: 'District attendance — last 30 days',
+        sub: 'Aggregated across 8 blocks',
+        labels: ATTENDANCE_30D.labels,
+        series: [{ name: 'District', color: CHART.brand, values: ATTENDANCE_30D.district }],
+        height: 180,
+      })}
+
+      ${hBarList({
+        title: 'Top 8 blocks — attendance ranking',
+        sub: 'Tap a row to drill into block detail',
+        items: [...DISTRICTS]
+          .sort((a, b) => b.attendance - a.attendance)
+          .map(d => ({
+            label: d.name,
+            value: d.attendance,
+            color: d.attendance >= 88 ? CHART.success : d.attendance >= 83 ? CHART.brand : CHART.warning,
+            sub: `${d.schools} schools`,
+          })),
+      })}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${funnel({
+          title: 'Scholarship funnel',
+          sub: 'Initiated → Paid · this AY',
+          stages: SCHOLARSHIP_FUNNEL.district,
+        })}
+        ${barChart({
+          title: 'Monthly disbursement',
+          sub: '₹ Cr · sanctioned vs disbursed',
+          items: MONTHLY_DISBURSEMENT.labels.map((m, i) => ({
+            label: m,
+            value: MONTHLY_DISBURSEMENT.district.disbursed[i],
+            sub: '₹' + MONTHLY_DISBURSEMENT.district.disbursed[i] + ' Cr',
+            color: CHART.success,
+          })),
+          suffix: '',
+          yMax: Math.max(...MONTHLY_DISBURSEMENT.district.sanctioned) * 1.1,
+        })}
+      </div>
+
+      ${heatmap({
+        title: 'Block × indicator heatmap',
+        sub: 'Higher = better. Tap a cell to drill.',
+        rows: DISTRICTS.map(d => ({
+          label: d.name,
+          values: [
+            { label: 'Att',  value: Math.round(d.attendance) },
+            { label: 'Sch%', value: Math.round(d.scholarshipRate) },
+            { label: 'XAMTA', value: 60 + Math.round((d.attendance - 80) * 2.5) },
+            { label: 'LO',   value: 55 + Math.round((d.scholarshipRate - 75) * 2) },
+          ],
+        })),
+        scale: 'cool',
+      })}
+    </div>`
+  return { title: 'District Dashboard', icon: '🏛️', html }
+}
+
+function buildStateDashboard() {
+  const s = STATE_SUMMARY || {}
+  const html = `
+    <div style="font-family:${DS.font};padding:0 4px;color:${DS.textPrimary}">
+      ${sectionHeader({
+        title: 'State Command — Gujarat',
+        subtitle: `Ministry of Education · ${TODAY}`,
+        badge: '33 districts',
+        gradient: true,
+      })}
+      ${kpiGrid([
+        { label: 'Total Schools',    value: fmtNum(s.totalSchools || 33248),    tone: 'brand',   icon: '🏫', sub: '33 districts' },
+        { label: 'Total Students',   value: fmtNum(s.totalStudents || 8240000), tone: 'purple',  icon: '👥', sub: '0–18 yrs · K-12' },
+        { label: 'Avg Attendance',   value: (s.avgAttendance || 85.4) + '%',     tone: 'success', icon: '📅', trend: { delta: '+1.2%', up: true } },
+        { label: 'Scheme Coverage',  value: (s.scholarshipRate || 79.8) + '%',   tone: 'warning', icon: '🏅', trend: { delta: '+3.4%', up: true } },
+        { label: 'Teachers',         value: fmtNum(s.totalTeachers || 280000),  tone: 'teal',    icon: '👨‍🏫', sub: 'state-wide' },
+        { label: 'Risk students',    value: fmtNum(s.riskStudents || 182400),   tone: 'error',   icon: '⚠️', sub: 'requires intervention' },
+      ])}
+
+      ${lineChart({
+        title: 'State-wide attendance — 30 days',
+        sub: 'Aggregated across 33,248 schools',
+        labels: ATTENDANCE_30D.labels,
+        series: [{ name: 'State', color: CHART.brand, values: ATTENDANCE_30D.state }],
+        height: 200,
+      })}
+
+      ${funnel({
+        title: 'Scholarship funnel — Gujarat',
+        sub: 'Namo Laxmi + Namo Saraswati combined',
+        stages: SCHOLARSHIP_FUNNEL.state,
+      })}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${barChart({
+          title: 'Monthly disbursement',
+          sub: '₹ Cr · last 6 months',
+          items: MONTHLY_DISBURSEMENT.labels.map((m, i) => ({
+            label: m,
+            value: MONTHLY_DISBURSEMENT.state.disbursed[i],
+            sub: '₹' + MONTHLY_DISBURSEMENT.state.disbursed[i] + ' Cr',
+            color: i === MONTHLY_DISBURSEMENT.labels.length - 1 ? CHART.brand : CHART.brandSubtleStrong,
+          })),
+          suffix: '',
+        })}
+        ${donut({
+          title: 'Risk-tier distribution',
+          sub: 'State students flagged',
+          centerValue: fmtNum(s.riskStudents || 182400),
+          centerLabel: 'flagged',
+          segments: [
+            { label: 'High risk',   value: 38000, color: CHART.error },
+            { label: 'Medium risk', value: 86400, color: CHART.warning },
+            { label: 'Low risk',    value: 58000, color: CHART.success },
+          ],
+        })}
+      </div>
+
+      ${hBarList({
+        title: 'Top 8 districts — attendance',
+        sub: 'Best to worst · this month',
+        items: [...DISTRICTS]
+          .sort((a, b) => b.attendance - a.attendance)
+          .map(d => ({
+            label: d.name,
+            value: d.attendance,
+            color: d.attendance >= 87 ? CHART.success : d.attendance >= 83 ? CHART.brand : CHART.warning,
+            sub: `${fmtNum(d.students)} students`,
+          })),
+      })}
+
+      ${heatmap({
+        title: 'District performance heatmap',
+        sub: 'Attendance · Scholarship · LO mastery · XAMTA scan coverage',
+        rows: DISTRICTS.map(d => ({
+          label: d.name,
+          values: [
+            { label: 'Att',     value: Math.round(d.attendance) },
+            { label: 'Sch',     value: Math.round(d.scholarshipRate) },
+            { label: 'LO',      value: 55 + Math.round((d.scholarshipRate - 75) * 2.5) },
+            { label: 'XAMTA',   value: 50 + Math.round((d.attendance - 80) * 3) },
+          ],
+        })),
+      })}
+    </div>`
+  return { title: 'State Dashboard', icon: '🏛️', html }
 }
 
 function buildLearningOutcomesArtifact() {
   const lo = LEARNING_OUTCOMES || {}
   const subjects = Object.keys(lo)
+
+  // Aggregate per-subject mastery (avg of all outcomes / all grades).
+  const subjectAvg = subjects.map(sub => {
+    const all = lo[sub].flatMap(o => [o.grade3, o.grade5, o.grade8])
+    return { name: sub, value: Math.round(all.reduce((s, x) => s + x, 0) / all.length) }
+  })
+
   const html = `
     <div style="font-family:${DS.font};padding:0 4px;color:${DS.textPrimary}">
-      <h2 style="font-size:24px;font-weight:600;line-height:32px;margin:0 0 4px">Learning Outcomes</h2>
-      <p style="color:${DS.textSecondary};font-size:12px;font-weight:400;letter-spacing:0.4px;margin:0 0 24px">${SCHOOL} · ${TODAY}</p>
-      ${subjects.map(sub => `
-        <div style="margin-bottom:24px">
-          <h4 style="font-size:16px;font-weight:600;letter-spacing:0.1px;margin:0 0 12px;color:${DS.textPrimary}">${sub}</h4>
-          <table style="width:100%;border-collapse:collapse;border:1px solid ${DS.borderDefault};border-radius:${DS.radiusLg}px;overflow:hidden;background:${DS.surfaceRaised}">
-            <thead>
-              <tr style="background:${DS.surface}">
-                <th style="text-align:left;padding:12px;font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.textTertiary};text-transform:uppercase">Outcome</th>
-                <th style="padding:12px 8px;font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.textTertiary};text-transform:uppercase;text-align:center">Gr 3</th>
-                <th style="padding:12px 8px;font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.textTertiary};text-transform:uppercase;text-align:center">Gr 5</th>
-                <th style="padding:12px 8px;font-size:11px;font-weight:500;letter-spacing:0.2px;color:${DS.textTertiary};text-transform:uppercase;text-align:center">Gr 8</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(lo[sub]||[]).map(item=>`
-                <tr style="border-top:1px solid ${DS.borderSubtle}">
-                  <td style="padding:12px;font-size:12px;font-weight:400;letter-spacing:0.4px;color:${DS.textPrimary}">${item.outcome}</td>
-                  <td style="padding:12px 8px;text-align:center">${pill(item.grade3||0)}</td>
-                  <td style="padding:12px 8px;text-align:center">${pill(item.grade5||0)}</td>
-                  <td style="padding:12px 8px;text-align:center">${pill(item.grade8||0)}</td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>`).join('')}
+      ${sectionHeader({
+        title: 'Learning Outcomes',
+        subtitle: `${SCHOOL} · GCERT-aligned mastery from XAMTA scans`,
+        badge: subjects.length + ' subjects',
+        gradient: true,
+      })}
+      ${kpiGrid(subjectAvg.map((s, i) => ({
+        label: s.name,
+        value: s.value + '%',
+        tone: ['brand', 'purple', 'success', 'warning'][i % 4],
+        icon: ['🔢', '🔬', '📖', '✏️'][i % 4],
+        sub: s.value >= 75 ? 'on track' : s.value >= 60 ? 'monitoring' : 'needs intervention',
+      })))}
+
+      ${barChart({
+        title: 'Subject mastery — overall',
+        sub: 'Average across all grades + outcomes',
+        items: subjectAvg.map((s, i) => ({
+          label: s.name,
+          value: s.value,
+          color: [CHART.brand, CHART.purple, CHART.success, CHART.warning][i % 4],
+        })),
+        height: 160,
+      })}
+
+      ${subjects.map((sub, i) => {
+        const items = lo[sub] || []
+        return heatmap({
+          title: sub + ' · outcome × grade',
+          sub: 'Mastery % · greener = stronger',
+          rows: items.map(item => ({
+            label: item.outcome,
+            values: [
+              { label: 'Grade 3', value: item.grade3 || 0 },
+              { label: 'Grade 5', value: item.grade5 || 0 },
+              { label: 'Grade 8', value: item.grade8 || 0 },
+            ],
+          })),
+          scale: 'cool',
+        })
+      }).join('')}
+
+      ${chartUi.panelStart()}
+        <h4 style="font-size:14px;font-weight:600;margin:0 0 8px;color:${DS.textPrimary}">💡 Recommended actions</h4>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${subjectAvg.filter(s => s.value < 70).map(s => `
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid ${CHART.warningSubtle};background:${CHART.warningSubtle}66;border-radius:10px">
+              <span style="font-size:16px">⚠️</span>
+              <div style="font-size:12px;color:${CHART.warningText};line-height:1.5">
+                <strong>${s.name}</strong> at ${s.value}% — schedule remediation for the bottom 2 outcomes; consider grade-specific intervention.
+              </div>
+            </div>`).join('') || `
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid ${CHART.successSubtle};background:${CHART.successSubtle}66;border-radius:10px">
+              <span style="font-size:16px">✅</span>
+              <div style="font-size:12px;color:${CHART.successText};line-height:1.5">All subjects above the intervention threshold. Keep up the focus on the lower-performing outcomes.</div>
+            </div>`}
+        </div>
+      ${chartUi.panelEnd()}
     </div>`
-  return { title:'Learning Outcomes', icon:'🎯', html }
+  return { title: 'Learning Outcomes', icon: '🎯', html }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

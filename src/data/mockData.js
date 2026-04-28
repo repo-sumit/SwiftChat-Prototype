@@ -199,6 +199,115 @@ export const NAMO_LAXMI_APPS = (() => {
   }))
 })()
 
+// ── 30-day attendance trend (per scope) — used by enhanced dashboards ───────
+function gen30(seed, base, amp) {
+  // Deterministic pseudo-random walk anchored around `base`.
+  const out = []
+  let v = base
+  for (let i = 0; i < 30; i++) {
+    const jitter = ((Math.sin(seed + i * 0.7) + Math.cos(seed * 1.3 + i)) * amp)
+    v = Math.max(60, Math.min(98, base + jitter))
+    out.push(Math.round(v * 10) / 10)
+  }
+  return out
+}
+const DAYS_30 = (() => {
+  const labels = []
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i)
+    labels.push(`${d.getDate()}/${d.getMonth() + 1}`)
+  }
+  return labels
+})()
+export const ATTENDANCE_30D = {
+  labels: DAYS_30,
+  school:   gen30(11, 87, 3),
+  district: gen30(7,  84, 4),
+  state:    gen30(3,  85, 2),
+}
+
+// ── Subject mastery — last 12 weeks (school + district + state aggregates)
+const WEEK_LABELS = (() => {
+  const labels = []
+  for (let i = 11; i >= 0; i--) labels.push(`W${(12 - i).toString().padStart(2, '0')}`)
+  return labels
+})()
+export const SUBJECT_MASTERY_12W = {
+  labels: WEEK_LABELS,
+  Math:     [62, 64, 65, 67, 68, 67, 69, 71, 72, 71, 73, 74],
+  Science:  [70, 71, 70, 72, 73, 75, 75, 76, 76, 78, 79, 80],
+  Gujarati: [74, 73, 75, 76, 76, 77, 77, 78, 79, 79, 80, 81],
+  English:  [60, 62, 61, 63, 64, 64, 66, 66, 68, 68, 70, 71],
+}
+
+// ── Grade enrolment + gender split (school) ────────────────────────────────
+export const SCHOOL_GRADE_BREAKDOWN = [
+  { grade: 'Grade 3', boys: 18, girls: 14, total: 32 },
+  { grade: 'Grade 5', boys: 15, girls: 15, total: 30 },
+  { grade: 'Grade 6', boys: 17, girls: 17, total: 34 },
+  { grade: 'Grade 8', boys: 14, girls: 16, total: 30 },
+]
+
+// ── Top performers across the school ────────────────────────────────────
+export const TOP_PERFORMERS = [
+  { name: 'Aarav Shah',    grade: 3, score: 92, attendance: 96 },
+  { name: 'Diya Patel',    grade: 3, score: 89, attendance: 94 },
+  { name: 'Ananya Pandya', grade: 8, score: 88, attendance: 95 },
+  { name: 'Vihaan Joshi',  grade: 5, score: 86, attendance: 91 },
+  { name: 'Saanvi Mehta',  grade: 6, score: 85, attendance: 93 },
+]
+
+// ── Scholarship funnel (state/district) ────────────────────────────────────
+export const SCHOLARSHIP_FUNNEL = {
+  state: [
+    { label: 'Initiated',     value: 1620000 },
+    { label: 'Submitted',     value: 1545000 },
+    { label: 'Auto-approved', value: 1100000 },
+    { label: 'Approved',      value: 1400000 },
+    { label: 'Paid',          value: 1325000 },
+  ],
+  district: [
+    { label: 'Initiated',     value: 28400 },
+    { label: 'Submitted',     value: 26800 },
+    { label: 'Auto-approved', value: 21200 },
+    { label: 'Approved',      value: 24500 },
+    { label: 'Paid',          value: 23100 },
+  ],
+}
+
+// ── Monthly disbursement (last 6 months) ─────────────────────────────────────
+export const MONTHLY_DISBURSEMENT = {
+  labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+  state: {
+    sanctioned: [78, 82, 80, 84, 88, 86],   // ₹ Cr
+    disbursed:  [70, 76, 74, 72, 79, 80],
+  },
+  district: {
+    sanctioned: [12, 13, 13, 14, 15, 14],
+    disbursed:  [11, 12, 12, 11, 13, 13],
+  },
+}
+
+// ── Payment failure breakdown (PFMS) ────────────────────────────────────────
+export const PAYMENT_FAILURES = [
+  { reason: 'Aadhaar–bank link missing', count: 45, amount: 22500, color: '#EB5757' },
+  { reason: 'Account frozen',             count: 12, amount: 6000,  color: '#F8B200' },
+  { reason: 'Invalid IFSC',               count: 8,  amount: 4000,  color: '#7C3AED' },
+]
+
+// ── 14-day per-student attendance for at-risk drill ─────────────────────────
+export function attendance14d(seed, attendancePct) {
+  const out = []
+  let streak = 0
+  for (let i = 0; i < 14; i++) {
+    const r = ((Math.sin(seed * 1.7 + i) + Math.cos(seed * 0.9 - i)) * 50 + 50)
+    const present = r < attendancePct
+    out.push(present ? 100 : 0)
+    streak = present ? streak + 1 : 0
+  }
+  return out
+}
+
 // ── XAMTA scan results (sample) ──────────────────────────────────────────────
 export const XAMTA_SAMPLE_RESULTS = [
   { student: 'Aarav Shah', grade: 3, subject: 'Math', score: 18, total: 25, lo: ['LO1: 4/5', 'LO2: 5/5', 'LO3: 3/5', 'LO4: 4/5', 'LO5: 2/5'] },
