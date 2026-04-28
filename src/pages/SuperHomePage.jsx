@@ -624,11 +624,15 @@ const QUICK_ACTIONS = {
     { icon: GraduationCap, label: 'DigiVritti\nState', bg: '#FCE4EC', fg: '#E91E63', trigger: 'Task: digivritti'              },
     { icon: FileText,      label: 'Policy\nAdvisor',   bg: '#F0F4FF', fg: '#3730A3', trigger: 'policy advisor'           },
   ],
+  // Parent — only views about their own child (attendance, results, homework,
+  // teacher message, report card). No DigiVritti / scholarship / school-wide
+  // controls.
   parent: [
-    { icon: CalendarCheck, label: "Ravi's\nAtt.",      bg: '#FFF8E1', fg: '#D97706', trigger: 'Task: attendance'         },
-    { icon: Award,         label: 'Scholar\nship',     bg: '#F3E5F5', fg: '#9333EA', trigger: 'Task: scholarship'        },
-    { icon: MessageSquare, label: 'Message\nTeacher',  bg: '#E3F2FD', fg: '#1D4ED8', trigger: 'parent alert'             },
-    { icon: FileText,      label: 'Download\nReport',  bg: '#E8F5E9', fg: '#059669', trigger: 'Task: report_card'        },
+    { icon: CalendarCheck, label: "Ravi's\nAttendance",  bg: '#FFF8E1', fg: '#D97706', trigger: 'Task: attendance'      },
+    { icon: TrendingUp,    label: 'Latest\nResult',      bg: '#E8F5E9', fg: '#16A34A', trigger: "my child's latest result" },
+    { icon: BookOpen,      label: 'Homework',            bg: '#EEF2FF', fg: '#4F46E5', trigger: 'homework due'             },
+    { icon: MessageSquare, label: 'Message\nTeacher',    bg: '#E3F2FD', fg: '#1D4ED8', trigger: 'parent alert'             },
+    { icon: FileText,      label: 'Download\nReport',    bg: '#F0F4FF', fg: '#3730A3', trigger: 'Task: report_card'        },
   ],
   // PFMS · Payment Officer — sees ONLY payment-side DigiVritti actions.
   // No Mark Attendance / XAMTA / generic dashboards.
@@ -1169,11 +1173,12 @@ function getRoleAlerts(role, profile) {
     { icon: '❌', label: 'Rejected/mo', value: '12',    color: '#DC2626' },
     { icon: '📈', label: 'Approval%',   value: '92.9%', color: '#386AF6' },
   ]
-  return [ // parent
-    { icon: '📅', label: 'Attendance', value: '74%', color: '#D97706' },
-    { icon: '📊', label: 'Avg Score', value: '68%', color: '#386AF6' },
-    { icon: '🏅', label: 'Scholarship', value: 'Pending', color: '#7C3AED' },
-    { icon: '📖', label: 'Grade', value: profile?.childGrade || 'Class 8', color: '#16A34A' },
+  // Parent — child-only metrics, no scholarship management.
+  return [
+    { icon: '📅', label: 'Attendance',  value: '74%',  color: '#D97706' },
+    { icon: '📊', label: 'Avg Score',   value: '68%',  color: '#386AF6' },
+    { icon: '📖', label: 'Homework',    value: 'Due',  color: '#7C3AED' },
+    { icon: '🎓', label: 'Grade',       value: profile?.childGrade || 'Class 8', color: '#16A34A' },
   ]
 }
 
@@ -1999,8 +2004,15 @@ export default function SuperHomePage() {
 
     // ── Thank you / polite ─────────────────────────────────────────────
     if (has('thank','thanks','thx','dhanyavaad')) {
-      addBot(`You're welcome${firstName ? `, ${firstName}` : ''}! 😊 Is there anything else I can help you with?`,
-        ['Mark attendance','Show dashboard','At-risk students'])
+      // Parent should only see chips about their child.
+      const followups = role === 'parent'
+        ? ["My child's attendance", 'Latest result', 'Homework', 'Message teacher']
+        : role === 'crc'   ? ['Pending reviews', 'Resubmitted queue', 'Approval summary']
+        : role === 'pfms'  ? ['Payment queue', 'Failed payments', 'UTR success']
+        : role === 'state_secretary' ? ['State dashboard', 'Funnel analytics', 'District comparison']
+        : role === 'deo'   ? ['District dashboard', 'Failed payments', 'Below attendance']
+        : ['Mark attendance','Show dashboard','At-risk students']
+      addBot(`You're welcome${firstName ? `, ${firstName}` : ''}! 😊 Is there anything else I can help you with?`, followups)
       return
     }
 
@@ -2013,9 +2025,14 @@ export default function SuperHomePage() {
         principal: `📋 **School Daily Brief — ${TODAY}**\n\n🏫 School attendance: 88.3% (342 students)\n⚠️ ${risk} students at high risk across school\n📋 ${pending} Namo Laxmi pending approvals\n👩‍🏫 2 teachers yet to mark attendance\n\nWhat would you like to review?`,
         deo: `📋 **District Brief — ${TODAY}**\n\n🏫 412 schools reporting (98% submission)\n📅 District attendance: 84.2%\n⚠️ 142 schools below 75% threshold\n🔴 3 anomalies flagged for review\n\nWhere should we start?`,
         state_secretary: `📋 **State Command Brief — ${TODAY}**\n\n🏛️ 33 districts · 33,248 schools\n👥 82.4 lakh students enrolled\n📅 State attendance: 85.4%\n⚠️ 3 districts below 80% threshold\n📊 Namo Laxmi: 79.8% disbursement rate\n\nWhat needs your attention?`,
-        parent: `📋 **${userProfile?.childName || 'Your Child'}'s Update — ${TODAY}**\n\n📅 Attendance this month: 74% (⚠️ below 80% target)\n📊 Last test score: 68% (Science)\n🏅 Namo Laxmi: Application pending\n📖 Homework due: Math Ex. 7.3\n\nWhat would you like to check?`,
+        parent: `📋 **${userProfile?.childName || 'Your Child'}'s Update — ${TODAY}**\n\n📅 Attendance this month: 74% (⚠️ below 80% target)\n📊 Last test score: 68% (Science)\n📖 Homework due: Math Ex. 7.3\n\nWhat would you like to check?`,
       }
-      addBot(briefs[role] || briefs.teacher, ['Mark attendance','At-risk students','Namo Laxmi','Show dashboard'])
+      // Parent-only chip set: scoped to their child, no school-wide / Namo
+      // Laxmi management options.
+      const briefChips = role === 'parent'
+        ? ["My child's attendance", 'Latest result', 'Homework', 'Message teacher']
+        : ['Mark attendance','At-risk students','Namo Laxmi','Show dashboard']
+      addBot(briefs[role] || briefs.teacher, briefChips)
       return
     }
 
@@ -2035,6 +2052,17 @@ export default function SuperHomePage() {
 
     // ── Any problems / alerts / issues ──────────────────────────────────
     if (has('problem','alert','issue','concern','anomaly','war room','flagged')) {
+      // Parents only see signals about their own child — never school-wide
+      // / scholarship-management / war-room views.
+      if (role === 'parent') {
+        const childName = userProfile?.childName || 'your child'
+        addBot(
+          `${ack} Here's what needs attention for ${childName}:\n\n📅 **Attendance below 80%** this month\n📊 **Last test score:** 68% (Science)\n📖 **Homework due:** Math Ex. 7.3\n\nWhat would you like to look at?`,
+          ["My child's attendance", "Latest result", "Homework", 'Message teacher'],
+          { progress: ['Checking your child’s record...', 'Fetching latest update...'] }
+        )
+        return
+      }
       const risk = AT_RISK_STUDENTS?.filter(s => s.risk === 'high')?.length || 0
       addBot(`${ack} I found some items that need attention:\n\n🔴 **${risk} high-risk students** — chronic absence or low scores\n⚠️ **3 anomalies detected** — Daskroi below 75% threshold\n📋 **2 pending** Namo Laxmi applications need review\n\nWhich would you like to look at first?`,
         ['At-risk students','Namo Laxmi','School dashboard','War room alerts'],
