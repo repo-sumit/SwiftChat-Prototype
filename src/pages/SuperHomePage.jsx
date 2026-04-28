@@ -1522,6 +1522,12 @@ export default function SuperHomePage() {
       hydratedFor.current = null
       return
     }
+    // Skip when handleSend has already pre-hydrated this chat. handleSend's
+    // lazy chat creation sets hydratedFor.current = newId BEFORE state
+    // commits — without this guard, the effect would fire on the
+    // null → newId transition and clobber the user bubble + bot reply that
+    // were just appended in the same React batch.
+    if (hydratedFor.current === activeChatId) return
     // Read fresh from localStorage rather than the closed-over `activeChat`
     // memo, since this effect must fire as soon as the id flips.
     const persisted = (userChats || []).find(c => c.id === activeChatId)
@@ -2556,12 +2562,16 @@ export default function SuperHomePage() {
   const handleNew = useCallback(() => {
     // Persist any pending messages on the current chat first.
     if (activeChatId && messages.length > 0) setChatMessages(activeChatId, messages)
-    // Create a fresh chat — context flips activeChatId, the hydration effect
-    // will then clear local messages.
-    createChat({ title: 'New chat' })
+    // Pre-clear local state IN THE SAME React batch as createChat so the
+    // user never sees the previous chat's content bleeding into the new
+    // thread for even one frame. The hydrate effect runs afterwards but is
+    // a no-op for the empty new chat.
+    setMessages([])
     setCollect(null)
     setArtifact(null)
     setActiveTool(null)
+    pendingNlp.current = null
+    createChat({ title: 'New chat' })
     setSidebar(false)
   }, [activeChatId, messages, createChat, setChatMessages])
 
@@ -2569,10 +2579,15 @@ export default function SuperHomePage() {
     if (!chatId || chatId === activeChatId) { setSidebar(false); return }
     // Save the current chat's messages before switching away.
     if (activeChatId && messages.length > 0) setChatMessages(activeChatId, messages)
-    switchChat(chatId)
+    // Pre-clear so the previous chat's bubbles don't render under the new
+    // chat's incoming messages during the switch. Hydrate then loads the
+    // selected chat's persisted messages on the next render.
+    setMessages([])
     setCollect(null)
     setArtifact(null)
     setActiveTool(null)
+    pendingNlp.current = null
+    switchChat(chatId)
     setSidebar(false)
   }, [activeChatId, messages, switchChat, setChatMessages])
 
