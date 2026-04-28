@@ -114,16 +114,27 @@ export const MODULES = [
 
 export const MODULE_BY_ID = Object.fromEntries(MODULES.map(m => [m.id, m]))
 
+// Escape regex metacharacters so a literal alias matches as-is.
+function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+
 export function findModuleByAlias(text) {
   const q = (text || '').toLowerCase()
-  // Score by length-of-match so longer aliases ("namo saraswati") win over
-  // ambiguous shorter ones ("namo").
+  // Match aliases as whole tokens (word-boundary on both sides) so short
+  // aliases like "ns" / "nly" don't accidentally fire inside words like
+  // "moNSoon" or "aNLYsis". Score by length-of-match so longer aliases
+  // ("namo saraswati") win over shorter ones ("namo").
   let best = null
   let bestScore = 0
   for (const mod of MODULES) {
     for (const a of mod.aliases) {
       const al = a.toLowerCase()
-      if (q.includes(al) && al.length > bestScore) {
+      // \b only works on ASCII word chars, but our short aliases are all
+      // ASCII; for native-script aliases (long, distinctive) we fall back to
+      // raw includes since \b doesn't apply to those Unicode ranges.
+      const hit = /^[\w\s.-]+$/.test(al)
+        ? new RegExp(`\\b${escapeRe(al)}\\b`, 'i').test(q)
+        : q.includes(al)
+      if (hit && al.length > bestScore) {
         best = mod
         bestScore = al.length
       }

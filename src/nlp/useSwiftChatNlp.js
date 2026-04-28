@@ -12,7 +12,7 @@
 // re-entry-into-handleSend powers).
 
 import { useCallback, useRef } from 'react'
-import { routeIntent } from './globalIntentRouter'
+import { routeIntent } from './globalIntentRouter.js'
 
 export function useSwiftChatNlp({
   role,

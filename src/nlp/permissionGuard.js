@@ -4,8 +4,8 @@
 // either { allowed: true } or { allowed: false, reason } so callers can show
 // the user a polite refusal.
 
-import { MODULE_BY_ID } from './moduleRegistry'
-import { getAction } from './actionRegistry'
+import { MODULE_BY_ID } from './moduleRegistry.js'
+import { getAction } from './actionRegistry.js'
 
 export function canRoleUseModule(role, moduleId) {
   const mod = MODULE_BY_ID[moduleId]

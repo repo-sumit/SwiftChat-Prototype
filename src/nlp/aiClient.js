@@ -16,8 +16,8 @@
 // Keeping it Promise-shaped lets callers `await` it whether the backend is
 // local or remote.
 
-import { matchLocalIntent, extractEntities } from './localPatterns'
-import { findModuleByAlias } from './moduleRegistry'
+import { matchLocalIntent, extractEntities } from './localPatterns.js'
+import { findModuleByAlias } from './moduleRegistry.js'
 
 let remoteInterpreter = null
 
@@ -52,6 +52,9 @@ export async function interpret({ text, role }) {
           entities: { ...entities, ...(remote.entities || {}) },
           confidence: typeof remote.confidence === 'number' ? remote.confidence : 0.7,
           source: 'llm',
+          // Friendly prelude text + chips the LLM offered. Optional — the
+          // router uses these for the bot bubble that precedes the directive.
+          meta: remote.meta || null,
         }
       }
     } catch {

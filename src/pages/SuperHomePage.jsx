@@ -15,7 +15,8 @@ import {
 import { ROLE_BOTS, ROLE_SUGGESTIONS } from '../roles/roleConfig'
 import { dispatchDigiVritti, isDigiVrittiTrigger } from '../utils/digivrittiChat'
 import { groupByRecency, detectTool, TOOL_TITLES } from '../utils/chatHistory'
-import { routeIntentSync } from '../nlp/globalIntentRouter'
+import { routeIntentSync, routeIntent } from '../nlp/globalIntentRouter'
+import { isRemoteEnabled } from '../nlp/groqInterpreter'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -2185,16 +2186,18 @@ export default function SuperHomePage() {
     // missed, plus resumes any pending clarify/confirm step. Existing exact
     // matches (TASK_FLOWS triggers, dv:* directives, greetings, etc.) win
     // first because this block sits AFTER them.
-    {
-      const nlp = routeIntentSync({
-        text,
-        role,
-        pendingAction: pendingNlp.current,
-      })
 
+    // Shared dispatch — routes a router result (sync or async) to chat/canvas.
+    // Returns true if the result was handled, false on `unknown`.
+    const dispatchNlpResult = (nlp) => {
       if (nlp.kind === 'execute') {
         pendingNlp.current = null
         const d = nlp.directive || {}
+        const meta = nlp.meta || null
+        if (meta?.assistantText) {
+          // Friendly LLM preamble before the synthetic trigger fires.
+          addBot(meta.assistantText)
+        }
         if (d.trigger) {
           // Re-enter handleSend with the existing trigger string so the
           // existing canvas / chat handlers do the actual work. silent:true
@@ -2209,15 +2212,13 @@ export default function SuperHomePage() {
             actions: d.reply.actions,
           })
         }
-        return
+        return true
       }
-
       if (nlp.kind === 'clarify') {
         pendingNlp.current = nlp.pendingAction
         addBot(nlp.prompt, nlp.chips || [])
-        return
+        return true
       }
-
       if (nlp.kind === 'confirm') {
         pendingNlp.current = nlp.pendingAction
         addBot(nlp.prompt, [], {
@@ -2226,21 +2227,60 @@ export default function SuperHomePage() {
             variant: label.startsWith('✅') ? 'ok' : 'err',
           })),
         })
-        return
+        return true
       }
-
       if (nlp.kind === 'denied') {
         pendingNlp.current = null
         addBot(nlp.reason || 'Not allowed.')
-        return
+        return true
       }
-
       if (nlp.kind === 'module-fallback') {
         pendingNlp.current = null
         addBot(nlp.module.fallbackPrompt, [])
+        return true
+      }
+      return false
+    }
+
+    {
+      const nlpSync = routeIntentSync({
+        text,
+        role,
+        pendingAction: pendingNlp.current,
+      })
+      if (dispatchNlpResult(nlpSync)) return
+
+      // ── Layer 2: remote LLM (Groq). Only fire if local came back unknown
+      // and a backend URL is configured. Failure paths (no env var, network
+      // down, malformed JSON) all resolve to null inside aiClient, so we
+      // gracefully fall through to the smart fallback below.
+      if (nlpSync.kind === 'unknown' && isRemoteEnabled() && !text.toLowerCase().startsWith('task:') && !text.toLowerCase().startsWith('dv:')) {
+        setTyping(true)
+        ;(async () => {
+          try {
+            const nlpRemote = await routeIntent({
+              text,
+              role,
+              pendingAction: pendingNlp.current,
+            })
+            setTyping(false)
+            if (!dispatchNlpResult(nlpRemote)) {
+              // Remote was also unknown — fall back to smart suggestions.
+              const opts = (
+                role === 'parent' ? ['My child attendance','Latest result','Homework','Message teacher'] :
+                role === 'pfms' ? ['Payment queue','Failed payments','UTR success'] :
+                role === 'crc' ? ['Pending reviews','Approval summary'] :
+                ['Mark attendance','Show dashboard','At-risk students']
+              )
+              addBot(`I'm not sure I understood "${text}". Try one of these:`, opts)
+            }
+          } catch {
+            setTyping(false)
+          }
+        })()
         return
       }
-      // kind === 'unknown' → fall through to smart fallback below.
+      // kind === 'unknown' AND no remote → fall through to smart fallback.
     }
 
     // ── Anything else — smart fallback ──────────────────────────────────

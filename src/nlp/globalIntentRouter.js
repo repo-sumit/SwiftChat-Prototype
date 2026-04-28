@@ -32,11 +32,11 @@
 //       — only the module was identified; show the module's fallback prompt.
 //
 
-import { interpret } from './aiClient'
-import { matchLocalIntent, extractEntities } from './localPatterns'
-import { getAction } from './actionRegistry'
-import { canRoleUseAction } from './permissionGuard'
-import { MODULE_BY_ID, findModuleByAlias } from './moduleRegistry'
+import { interpret } from './aiClient.js'
+import { matchLocalIntent, extractEntities } from './localPatterns.js'
+import { getAction } from './actionRegistry.js'
+import { canRoleUseAction } from './permissionGuard.js'
+import { MODULE_BY_ID, findModuleByAlias } from './moduleRegistry.js'
 
 function findEntityChip(prompt, chip, requiredEntity) {
   // The clarification chips (e.g. "Class 6") may need to be parsed back into
@@ -83,7 +83,11 @@ export async function routeIntent({ text, role, pendingAction = null, accumulate
     if (!guard.allowed) return { kind: 'denied', reason: guard.reason }
 
     const entities = { ...accumulatedEntities, ...r.entities }
-    return finalizeAction(action, entities, role)
+    const out = finalizeAction(action, entities, role)
+    // Forward LLM preamble text + chips when present. handleSend uses these
+    // to render the friendly assistant bubble before firing the directive.
+    if (r.meta) out.meta = r.meta
+    return out
   }
 
   if (r.fallbackModule) {
