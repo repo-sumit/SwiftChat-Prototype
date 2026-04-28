@@ -762,12 +762,14 @@ function greetingReply(text, _botName, role, profile) {
 
 function VSKSidebar({ onNew, activeSession, onSelect, role, userProfile, onClose, onSignOut }) {
   const meta = userProfile || ROLE_META[role] || ROLE_META.teacher
-  const bots = ROLE_BOTS[role] || ROLE_BOTS.teacher || []
   const initial = (meta.name || 'U')[0].toUpperCase()
+  // Title/Large: 16px Bold; Caption: 11px Medium
+  const titleLarge = { fontSize: 16, fontWeight: 700, lineHeight: '20px', fontFamily: 'Montserrat, sans-serif' }
+  const caption    = { fontSize: 11, fontWeight: 500, lineHeight: '14px', letterSpacing: '0.2px', fontFamily: 'Montserrat, sans-serif' }
   return (
-    <div className="flex flex-col h-full bg-white border-r border-bdr" style={{ width: 260 }}>
+    <div className="flex flex-col h-full bg-white border-r" style={{ width: 260, borderRightColor: '#D5D8DF' }}>
       {/* Logo + new */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-bdr-light">
+      <div className="flex items-center justify-between px-4 py-4 border-b" style={{ borderBottomColor: '#ECECEC' }}>
         <div className="flex items-center gap-2">
           <img
             src="https://i.ibb.co/Xr1jqvd4/Logo-VSK-PNG.png"
@@ -777,14 +779,14 @@ function VSKSidebar({ onNew, activeSession, onSelect, role, userProfile, onClose
             style={{ objectFit: 'contain', display: 'block' }}
             draggable={false}
           />
-          <span className="font-bold text-[15px] text-txt-primary">VSK Gujarat</span>
+          <span style={{ ...titleLarge, color: '#0E0E0E' }}>VSK Gujarat</span>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onNew} className="w-7 h-7 rounded-lg flex items-center justify-center text-txt-secondary hover:bg-surface-secondary transition-colors">
+          <button onClick={onNew} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#ECECEC] transition-colors" style={{ color: '#7383A5' }}>
             <Plus size={16} />
           </button>
           {onClose && (
-            <button onClick={onClose} className="md:hidden w-7 h-7 rounded-lg flex items-center justify-center text-txt-secondary hover:bg-surface-secondary">
+            <button onClick={onClose} className="md:hidden w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#ECECEC]" style={{ color: '#7383A5' }}>
               <X size={16} />
             </button>
           )}
@@ -792,27 +794,36 @@ function VSKSidebar({ onNew, activeSession, onSelect, role, userProfile, onClose
       </div>
 
       {/* Search */}
-      <div className="px-3 py-2.5">
-        <div className="flex items-center gap-2 bg-surface-secondary rounded-lg px-3 py-2">
-          <Search size={13} className="text-txt-tertiary flex-shrink-0" />
-          <input className="flex-1 bg-transparent text-[13px] text-txt-primary outline-none placeholder-txt-tertiary" placeholder="Search chats..." />
+      <div className="px-3 py-3">
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-full" style={{ background: '#ECECEC' }}>
+          <Search size={14} className="flex-shrink-0" style={{ color: '#828996' }} />
+          <input
+            className="flex-1 bg-transparent outline-none placeholder:text-[#828996]"
+            placeholder="Search chats..."
+            style={{ fontSize: 14, fontWeight: 500, lineHeight: '20px', letterSpacing: '0.1px', color: '#0E0E0E', fontFamily: 'Montserrat, sans-serif' }}
+          />
         </div>
       </div>
 
       {/* History */}
       <div className="flex-1 overflow-y-auto px-2 pb-2">
         {Object.entries(CHAT_HISTORY).map(([section, items]) => (
-          <div key={section} className="mb-2">
-            <div className="px-2 py-1.5 text-[10px] font-bold text-txt-tertiary tracking-[0.8px]">{section}</div>
+          <div key={section} className="mb-3">
+            <div className="px-3 py-2" style={{ ...caption, color: '#828996', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{section}</div>
             {items.map((item, i) => (
               <button
                 key={i}
                 onClick={() => onSelect && onSelect(item)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-[13px] transition-colors ${
-                  activeSession === item
-                    ? 'bg-surface-secondary text-txt-primary font-medium'
-                    : 'text-txt-secondary hover:bg-surface-secondary'
-                }`}
+                className="w-full text-left px-3 py-2 transition-colors"
+                style={{
+                  fontSize: 14, lineHeight: '20px', letterSpacing: '0.25px', fontFamily: 'Montserrat, sans-serif',
+                  borderRadius: 8,
+                  background: activeSession === item ? '#ECECEC' : 'transparent',
+                  color: activeSession === item ? '#0E0E0E' : '#7383A5',
+                  fontWeight: activeSession === item ? 500 : 400,
+                }}
+                onMouseEnter={e => { if (activeSession !== item) e.currentTarget.style.background = '#ECECEC' }}
+                onMouseLeave={e => { if (activeSession !== item) e.currentTarget.style.background = 'transparent' }}
               >
                 {item}
               </button>
@@ -822,21 +833,21 @@ function VSKSidebar({ onNew, activeSession, onSelect, role, userProfile, onClose
       </div>
 
       {/* User footer */}
-      <div className="border-t border-bdr-light px-3 py-3 flex items-center gap-2.5">
+      <div className="border-t px-3 py-3 flex items-center gap-2.5" style={{ borderTopColor: '#ECECEC' }}>
         <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0"
-          style={{ background: userProfile?.color || '#386AF6' }}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-white flex-shrink-0"
+          style={{ background: userProfile?.color || '#386AF6', fontSize: 14, fontWeight: 700, fontFamily: 'Montserrat, sans-serif' }}
         >
           {initial}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[12px] font-semibold text-txt-primary truncate">{meta.name || meta.org}</div>
-          <div className="text-[10px] text-txt-tertiary truncate">{meta.badge || meta.org}</div>
+          <div className="truncate" style={{ fontSize: 14, fontWeight: 600, lineHeight: '20px', letterSpacing: '0.1px', color: '#0E0E0E', fontFamily: 'Montserrat, sans-serif' }}>{meta.name || meta.org}</div>
+          <div className="truncate" style={{ ...caption, color: '#828996' }}>{meta.badge || meta.org}</div>
         </div>
         <button
           onClick={onSignOut}
-          className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
-          style={{ fontFamily: 'Montserrat, sans-serif' }}
+          className="px-3 py-1.5 rounded-full hover:bg-[#FDEAEA] transition-colors"
+          style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', letterSpacing: '0.25px', color: '#C0392B', fontFamily: 'Montserrat, sans-serif' }}
         >Log out</button>
       </div>
     </div>
@@ -845,11 +856,11 @@ function VSKSidebar({ onNew, activeSession, onSelect, role, userProfile, onClose
 
 function TypingIndicator() {
   return (
-    <div className="flex gap-3 items-end mb-4">
-      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">V</div>
-      <div className="bg-surface-secondary rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5 items-center">
+    <div className="flex gap-2 items-end mb-2">
+      <div className="w-7 h-7 rounded-full bg-[#386AF6] flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">V</div>
+      <div className="px-3 py-3 flex gap-1.5 items-center" style={{ background: '#ECECEC', borderRadius: '12px 12px 12px 2px' }}>
         {[0,1,2].map(i => (
-          <div key={i} className="w-1.5 h-1.5 rounded-full bg-txt-tertiary animate-typing" style={{ animationDelay: `${i*0.15}s` }} />
+          <div key={i} className="w-1.5 h-1.5 rounded-full animate-typing" style={{ background: '#7383A5', animationDelay: `${i*0.15}s` }} />
         ))}
       </div>
     </div>
@@ -866,16 +877,16 @@ function ProgressText({ steps }) {
     }
   }, [idx, steps.length])
   return (
-    <div className="flex gap-3 items-end mb-4">
-      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">V</div>
-      <div className="bg-surface-secondary rounded-2xl rounded-bl-sm px-4 py-3">
+    <div className="flex gap-2 items-end mb-2">
+      <div className="w-7 h-7 rounded-full bg-[#386AF6] flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">V</div>
+      <div className="px-3 py-3" style={{ background: '#ECECEC', borderRadius: '12px 12px 12px 2px' }}>
         <div className="flex items-center gap-2">
-          <span className="text-[13px] text-txt-secondary" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <span style={{ fontSize: 14, lineHeight: '20px', letterSpacing: '0.25px', color: '#7383A5', fontFamily: 'Montserrat, sans-serif' }}>
             {steps[idx]}
           </span>
           <span className="inline-flex gap-1">
             {[0,1,2].map(i => (
-              <span key={i} className="w-1 h-1 rounded-full bg-primary animate-typing" style={{ animationDelay: `${i*0.2}s` }} />
+              <span key={i} className="w-1 h-1 rounded-full animate-typing" style={{ background: '#386AF6', animationDelay: `${i*0.2}s` }} />
             ))}
           </span>
         </div>
@@ -900,37 +911,39 @@ function WebviewModal({ card, onClose }) {
       >
       {/* On desktop: half width with border */}
       <style>{`.animate-slide-in { animation: slideIn 0.25s ease }
-        @media(min-width:768px){ [data-webview]{ width:50% !important; min-width:380px; border-left:1px solid #E2E8F0 } }`}</style>
+        @media(min-width:768px){ [data-webview]{ width:50% !important; min-width:380px; border-left:1px solid #D5D8DF } }`}</style>
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E2E8F0] flex-shrink-0" style={{ background: '#F8FAFC' }}>
-        <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#F0F2F5]">
-          <ArrowLeft size={18} className="text-txt-primary" />
+      <div className="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0" style={{ background: '#FFFFFF', borderBottomColor: '#D5D8DF' }}>
+        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#ECECEC]" style={{ color: '#0E0E0E' }}>
+          <ArrowLeft size={18} />
         </button>
         <span className="text-[18px]">{card.icon}</span>
         <div className="flex-1 min-w-0">
-          <div className="text-[14px] font-bold text-txt-primary truncate" style={{ fontFamily: 'Montserrat, sans-serif' }}>{card.title}</div>
-          {card.subtitle && <div className="text-[11px] text-txt-secondary">{card.subtitle}</div>}
+          <div className="truncate" style={{ fontSize: 16, fontWeight: 700, lineHeight: '20px', color: '#0E0E0E', fontFamily: 'Montserrat, sans-serif' }}>{card.title}</div>
+          {card.subtitle && <div className="truncate" style={{ fontSize: 11, fontWeight: 500, lineHeight: '14px', letterSpacing: '0.2px', color: '#828996', fontFamily: 'Montserrat, sans-serif' }}>{card.subtitle}</div>}
         </div>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] text-[11px] text-txt-secondary hover:bg-[#F0F2F5] transition-colors" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[1.5px] hover:bg-[#ECECEC] transition-colors"
+          style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.25px', borderColor: '#D5D8DF', color: '#7383A5', fontFamily: 'Montserrat, sans-serif' }}>
           <Upload size={12} /> Share
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] text-[11px] text-txt-secondary hover:bg-[#F0F2F5] transition-colors" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[1.5px] hover:bg-[#ECECEC] transition-colors"
+          style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.25px', borderColor: '#D5D8DF', color: '#7383A5', fontFamily: 'Montserrat, sans-serif' }}>
           <Download size={12} /> Download
         </button>
-        <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#F0F2F5]">
-          <X size={16} className="text-txt-tertiary" />
+        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#ECECEC]" style={{ color: '#828996' }}>
+          <X size={16} />
         </button>
       </div>
       {/* Content */}
       {isExpired ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-          <Clock size={48} className="text-txt-tertiary mb-4" />
-          <h3 className="text-[18px] font-bold text-txt-primary mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>Session Expired</h3>
-          <p className="text-[13px] text-txt-secondary mb-6">This view has expired. Please run the task again for fresh data.</p>
+          <Clock size={48} className="mb-4" style={{ color: '#828996' }} />
+          <h3 className="mb-2" style={{ fontSize: 20, fontWeight: 600, lineHeight: '28px', color: '#0E0E0E', fontFamily: 'Montserrat, sans-serif' }}>Session Expired</h3>
+          <p className="mb-6" style={{ fontSize: 14, lineHeight: '20px', letterSpacing: '0.25px', color: '#7383A5', fontFamily: 'Montserrat, sans-serif' }}>This view has expired. Please run the task again for fresh data.</p>
           <button
             onClick={onClose}
-            className="px-6 py-2.5 rounded-xl text-[14px] font-bold text-white"
-            style={{ background: '#386AF6', fontFamily: 'Montserrat, sans-serif' }}
+            className="px-6 py-3 rounded-full text-white"
+            style={{ background: '#386AF6', fontSize: 16, fontWeight: 600, lineHeight: '20px', letterSpacing: '0.1px', fontFamily: 'Montserrat, sans-serif' }}
           >Back to Chat</button>
         </div>
       ) : (
@@ -948,23 +961,37 @@ function WebviewModal({ card, onClose }) {
 function MessageBubble({ msg, onChipClick, onAction, onCardClick }) {
   const isUser = msg.role === 'user'
   const ACTION_COLORS = {
-    ok:   'border-[#4CAF50] text-[#4CAF50] active:bg-[#4CAF50]',
-    err:  'border-[#E53935] text-[#E53935] active:bg-[#E53935]',
-    warn: 'border-[#FF8F00] text-[#FF8F00] active:bg-[#FF8F00]',
-    primary: 'border-primary text-primary active:bg-primary',
+    ok:   'border-[#00BA34] text-[#007B22] active:bg-[#00BA34]',
+    err:  'border-[#EB5757] text-[#C0392B] active:bg-[#EB5757]',
+    warn: 'border-[#F8B200] text-[#9A6500] active:bg-[#F8B200]',
+    primary: 'border-[#386AF6] text-[#386AF6] active:bg-[#386AF6]',
   }
   const hasWide = msg.html || msg.card
+
+  // Body/Medium typography per design system: 14px Regular, 20px line-height, +0.25 letter-spacing
+  const bodyMedium = { fontSize: 14, lineHeight: '20px', letterSpacing: '0.25px', fontFamily: 'Montserrat, sans-serif' }
+
+  // Chat bubble mixed-radius patterns from design system
+  // User: tl=lg, tr=lg, br=xs, bl=lg → 12 12 2 12
+  // Bot:  tl=lg, tr=lg, br=lg, bl=xs → 12 12 12 2
+  const userRadius = '12px 12px 2px 12px'
+  const botRadius  = '12px 12px 12px 2px'
+
   return (
-    <div className={`flex gap-3 mb-4 ${isUser ? 'flex-row-reverse' : 'items-end'}`}>
+    <div className={`flex gap-2 mb-2 ${isUser ? 'flex-row-reverse' : 'items-end'}`}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0 self-end">V</div>
+        <div className="w-7 h-7 rounded-full bg-[#386AF6] flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0 self-end">V</div>
       )}
       <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} ${hasWide ? 'max-w-[92%] md:max-w-[82%]' : 'max-w-[75%]'}`}>
         {/* Text bubble */}
         {msg.text && (
-          <div className={`px-4 py-2.5 rounded-2xl text-[13.5px] leading-relaxed whitespace-pre-line ${
-            isUser ? 'text-white rounded-br-sm' : 'bg-[#F5F7FA] text-txt-primary rounded-bl-sm'
-          }`} style={{ background: isUser ? '#386AF6' : undefined, fontFamily: 'Montserrat, sans-serif' }}>
+          <div className="px-3 py-3 whitespace-pre-line"
+            style={{
+              ...bodyMedium,
+              background: isUser ? '#386AF6' : '#ECECEC',
+              color: isUser ? '#FFFFFF' : '#0E0E0E',
+              borderRadius: isUser ? userRadius : botRadius,
+            }}>
             {msg.text}
           </div>
         )}
@@ -972,19 +999,19 @@ function MessageBubble({ msg, onChipClick, onAction, onCardClick }) {
         {msg.card && (
           <div
             onClick={() => onCardClick?.(msg.card)}
-            className="mt-2 bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow w-full"
-            style={{ maxWidth: 380 }}
+            className="mt-2 bg-white border border-[#D5D8DF] overflow-hidden cursor-pointer hover:shadow-md transition-shadow w-full"
+            style={{ maxWidth: 380, borderRadius: 12 }}
           >
             {msg.card.preview && (
               <div className="px-4 pt-3 pb-1" dangerouslySetInnerHTML={{ __html: msg.card.preview }} />
             )}
-            <div className="flex items-center gap-3 px-4 py-3 border-t border-[#F0F2F5]">
+            <div className="flex items-center gap-3 px-4 py-3 border-t border-[#ECECEC]">
               <span className="text-[18px]">{msg.card.icon}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-bold text-txt-primary" style={{ fontFamily: 'Montserrat, sans-serif' }}>{msg.card.title}</div>
-                {msg.card.subtitle && <div className="text-[11px] text-txt-tertiary">{msg.card.subtitle}</div>}
+                <div className="text-[14px] font-semibold text-[#0E0E0E]" style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '-0.2px', lineHeight: '20px' }}>{msg.card.title}</div>
+                {msg.card.subtitle && <div className="text-[11px] font-medium text-[#828996]" style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.2px', lineHeight: '14px', marginTop: 2 }}>{msg.card.subtitle}</div>}
               </div>
-              <div className="flex items-center gap-1 text-primary text-[12px] font-semibold flex-shrink-0">
+              <div className="flex items-center gap-1 text-[#386AF6] text-[12px] font-semibold flex-shrink-0" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                 <Eye size={14} /> Open
               </div>
             </div>
@@ -992,7 +1019,8 @@ function MessageBubble({ msg, onChipClick, onAction, onCardClick }) {
         )}
         {/* Inline HTML card */}
         {msg.html && (
-          <div className="mt-1.5 bg-white border border-[#E2E8F0] rounded-2xl px-4 py-3 text-txt-primary"
+          <div className="mt-1.5 bg-white border border-[#D5D8DF] px-4 py-3 text-[#0E0E0E]"
+            style={{ borderRadius: 12 }}
             dangerouslySetInnerHTML={{ __html: msg.html }} />
         )}
         {/* Action buttons */}
@@ -1001,19 +1029,19 @@ function MessageBubble({ msg, onChipClick, onAction, onCardClick }) {
             {msg.actions.map((a, i) => (
               <button key={i}
                 onClick={() => onAction ? onAction(a) : onChipClick(a.trigger)}
-                className={`px-3.5 py-1.5 rounded-full border-[1.5px] text-[12px] font-bold bg-white transition-colors active:text-white ${ACTION_COLORS[a.variant] || ACTION_COLORS.primary}`}
-                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                className={`px-4 py-1.5 rounded-full border-[1.5px] text-[12px] font-semibold bg-white transition-colors active:text-white ${ACTION_COLORS[a.variant] || ACTION_COLORS.primary}`}
+                style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.25px' }}
               >{a.label}</button>
             ))}
           </div>
         )}
         {/* Chip options */}
         {msg.opts?.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2.5">
+          <div className="flex flex-wrap gap-2 mt-2">
             {msg.opts.map((opt, i) => (
               <button key={i} onClick={() => onChipClick(opt)}
-                className="px-4 py-1.5 rounded-full border border-[#E2E8F0] text-[12.5px] text-txt-primary bg-white hover:bg-[#F5F7FA] transition-colors"
-                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                className="px-4 py-1.5 rounded-full border-[1.5px] border-[#386AF6] text-[12px] font-medium text-[#386AF6] bg-white hover:bg-[#EEF2FF] transition-colors"
+                style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.25px' }}
               >{opt}</button>
             ))}
           </div>
@@ -1066,75 +1094,87 @@ function WelcomeScreen({ botName, onChip, role, profile }) {
   const firstName = profile?.name?.split(' ')[0] || 'there'
   const roleLabel = ROLE_META[role]?.badge || 'User'
 
+  // Design system text styles
+  const headingMedium  = { fontSize: 24, fontWeight: 600, lineHeight: '32px', fontFamily: 'Montserrat, sans-serif' }
+  const titleSmall     = { fontSize: 14, fontWeight: 600, lineHeight: '20px', letterSpacing: '-0.2px', fontFamily: 'Montserrat, sans-serif' }
+  const bodyMedium     = { fontSize: 14, fontWeight: 400, lineHeight: '20px', letterSpacing: '0.25px', fontFamily: 'Montserrat, sans-serif' }
+  const labelSmall     = { fontSize: 12, fontWeight: 500, lineHeight: '16px', letterSpacing: '0.25px', fontFamily: 'Montserrat, sans-serif' }
+  const caption        = { fontSize: 11, fontWeight: 500, lineHeight: '14px', letterSpacing: '0.2px', fontFamily: 'Montserrat, sans-serif' }
+  const captionSmall   = { fontSize: 10, fontWeight: 400, lineHeight: '14px', letterSpacing: '0.2px', fontFamily: 'Montserrat, sans-serif' }
+
   return (
-    <div className="flex-1 flex flex-col items-center px-4 md:px-8 py-6 overflow-y-auto">
+    <div className="flex-1 flex flex-col items-center px-4 md:px-8 py-8 overflow-y-auto" style={{ background: '#ECECEC' }}>
 
       {/* Personalized hero */}
-      <div className="w-full max-w-[700px] mb-6 mt-2">
-        <div className="flex items-center gap-4 mb-5">
-          <div className="mb-0">
-            <img src="https://i.ibb.co/Xr1jqvd4/Logo-VSK-PNG.png" alt="VSK" width={48} height={48}
-              style={{ objectFit: 'contain', display: 'block' }} draggable={false} />
-          </div>
+      <div className="w-full max-w-[704px] mb-8 mt-2">
+        <div className="flex items-center gap-4 mb-6">
+          <img src="https://i.ibb.co/Xr1jqvd4/Logo-VSK-PNG.png" alt="VSK" width={48} height={48}
+            style={{ objectFit: 'contain', display: 'block' }} draggable={false} />
           <div>
-            <h1 className="text-[22px] font-bold text-txt-primary" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <h1 style={{ ...headingMedium, color: '#0E0E0E' }}>
               {TIME_GREET}, {firstName}!
             </h1>
-            <p className="text-[13px] text-txt-secondary" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <p style={{ ...bodyMedium, color: '#7383A5' }}>
               {roleLabel} · VSK 3.0 Gujarat
             </p>
           </div>
         </div>
 
         {/* Today's stats strip */}
-        <div className="grid grid-cols-4 gap-2 mb-6">
+        <div className="grid grid-cols-4 gap-3">
           {alerts.map((a, i) => (
-            <div key={i} className="bg-white border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-center hover:shadow-sm transition-shadow">
-              <div className="text-[16px] mb-0.5">{a.icon}</div>
-              <div className="text-[15px] font-bold" style={{ color: a.color, fontFamily: 'Montserrat, sans-serif' }}>{a.value}</div>
-              <div className="text-[9px] font-semibold text-txt-tertiary tracking-wide">{a.label.toUpperCase()}</div>
+            <div key={i} className="bg-white px-4 py-4 text-center transition-shadow hover:shadow-sm" style={{ borderRadius: 12, border: '1px solid #D5D8DF' }}>
+              <div className="text-[18px] mb-1">{a.icon}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, lineHeight: '24px', color: a.color, fontFamily: 'Montserrat, sans-serif' }}>{a.value}</div>
+              <div style={{ ...captionSmall, color: '#828996', textTransform: 'uppercase', marginTop: 2 }}>{a.label}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="w-full max-w-[700px]">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Sparkles size={14} className="text-primary" />
-          <span className="text-[13px] font-bold text-txt-primary" style={{ fontFamily: 'Montserrat, sans-serif' }}>Quick Actions</span>
+      <div className="w-full max-w-[704px]">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={14} style={{ color: '#386AF6' }} />
+          <span style={{ ...titleSmall, color: '#0E0E0E' }}>Quick Actions</span>
         </div>
 
-        <div className="grid grid-cols-4 gap-2.5 mb-6">
+        <div className="grid grid-cols-4 gap-3 mb-8">
           {actions.map((item, i) => {
             const Icon = item.icon
             return (
               <button key={i} onClick={() => onChip(item.trigger)}
-                className="flex flex-col items-center justify-center gap-2 py-4 px-2 rounded-2xl border border-[#E2E8F0] active:scale-95 transition-all duration-150 hover:shadow-md"
-                style={{ background: item.bg }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: item.fg + '22' }}>
+                className="flex flex-col items-center justify-center gap-2 py-4 px-2 active:scale-95 transition-all duration-150 hover:shadow-md"
+                style={{ background: item.bg, borderRadius: 12, border: '1px solid #D5D8DF' }}>
+                <div className="w-10 h-10 flex items-center justify-center" style={{ background: item.fg + '22', borderRadius: 8 }}>
                   <Icon size={20} color={item.fg} strokeWidth={1.8} />
                 </div>
-                <span className="text-[11px] font-semibold text-txt-primary text-center leading-tight whitespace-pre-line"
-                  style={{ fontFamily: 'Montserrat, sans-serif' }}>{item.label}</span>
+                <span className="text-center whitespace-pre-line"
+                  style={{ ...caption, color: '#0E0E0E', fontWeight: 600 }}>{item.label}</span>
               </button>
             )
           })}
         </div>
 
-        {/* Suggested prompts — LLM style */}
+        {/* Suggested prompts */}
         {suggestions.length > 0 && (
           <div>
-            <div className="flex items-center gap-1.5 mb-3">
-              <MessageSquare size={13} className="text-txt-tertiary" />
-              <span className="text-[12px] font-bold text-txt-secondary" style={{ fontFamily: 'Montserrat, sans-serif' }}>Try asking me...</span>
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare size={13} style={{ color: '#828996' }} />
+              <span style={{ ...labelSmall, color: '#7383A5' }}>Try asking me...</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {suggestions.slice(0, 6).map((s, i) => (
                 <button key={i} onClick={() => onChip(s)}
-                  className="text-left px-4 py-3 rounded-xl border border-[#E2E8F0] text-[13px] text-txt-secondary bg-white hover:bg-[#F5F7FA] hover:border-primary/30 hover:text-txt-primary transition-all"
-                  style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                  <span className="text-primary mr-1.5">→</span> {s}
+                  className="text-left px-4 py-3 bg-white transition-all"
+                  style={{
+                    ...bodyMedium, color: '#7383A5',
+                    borderRadius: 12,
+                    border: '1px solid #D5D8DF',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#FAFAFA'; e.currentTarget.style.borderColor = '#84A2F4'; e.currentTarget.style.color = '#0E0E0E' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#D5D8DF'; e.currentTarget.style.color = '#7383A5' }}>
+                  <span style={{ color: '#386AF6', marginRight: 6, fontWeight: 600 }}>→</span> {s}
                 </button>
               ))}
             </div>
@@ -1175,22 +1215,27 @@ function InputBar({ onSend, disabled, activeBot, onAttach, activeTool, onToolSel
     setText(e.target.value)
   }
 
+  // Label/Medium typography per design system: 14px Medium, 20px line-height, +0.1 ls
+  const labelMedium = { fontSize: 14, lineHeight: '20px', letterSpacing: '0.1px', fontFamily: 'Montserrat, sans-serif' }
   return (
-    <div className="px-4 pb-4 pt-2 flex-shrink-0">
+    <div className="px-4 pb-4 pt-2 flex-shrink-0" style={{ background: '#ECECEC' }}>
       {/* Active tool badge */}
       {activeTool && (
         <div className="flex items-center gap-2 mb-2 px-1">
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full text-white"
-            style={{ background: DESIGN_TOOLS.find(t=>t.id===activeTool)?.color || '#666', fontFamily: 'Montserrat, sans-serif' }}>
+          <span className="text-[11px] font-medium px-3 py-1 rounded-full text-white"
+            style={{ background: DESIGN_TOOLS.find(t=>t.id===activeTool)?.color || '#666', fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.2px' }}>
             {DESIGN_TOOLS.find(t=>t.id===activeTool)?.icon} {DESIGN_TOOLS.find(t=>t.id===activeTool)?.label}
           </span>
-          <button onClick={() => onToolSelect?.(null)} className="text-[11px] text-txt-tertiary hover:text-txt-secondary">✕ Remove</button>
+          <button onClick={() => onToolSelect?.(null)} className="text-[11px] text-[#828996] hover:text-[#7383A5]" style={{ fontFamily: 'Montserrat, sans-serif' }}>✕ Remove</button>
         </div>
       )}
       <div
-        className={`rounded-2xl border transition-all ${
-          focused ? 'border-primary shadow-[0_0_0_2px_rgba(56,106,246,0.15)]' : 'border-[#E2E8F0]'
-        } bg-white`}
+        className={`border-[1.5px] transition-all bg-white`}
+        style={{
+          borderColor: focused ? '#386AF6' : '#D5D8DF',
+          borderRadius: 24,
+          boxShadow: focused ? '0 0 0 2px rgba(56,106,246,0.15)' : 'none',
+        }}
       >
         <textarea
           ref={taRef}
@@ -1201,14 +1246,14 @@ function InputBar({ onSend, disabled, activeBot, onAttach, activeTool, onToolSel
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={activeTool ? `Describe what to create with ${activeTool === 'canva' ? 'Canva' : 'Adobe'}...` : `Message ${activeBot || 'VSK Gujarat'}...`}
-          className="w-full px-4 pt-3 pb-2 text-[14px] text-txt-primary bg-transparent outline-none resize-none placeholder-txt-tertiary leading-relaxed"
-          style={{ minHeight: 44, maxHeight: 150, fontFamily: 'Montserrat, sans-serif' }}
+          className="w-full px-5 pt-3 pb-2 bg-transparent outline-none resize-none placeholder:text-[#828996]"
+          style={{ ...labelMedium, color: '#0E0E0E', minHeight: 44, maxHeight: 150 }}
         />
         <div className="flex items-center gap-1.5 px-3 pb-2.5">
           {/* Attachment */}
           <button
             onClick={() => fileRef.current?.click()}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-txt-tertiary hover:bg-[#F5F7FA] transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-full text-[#7383A5] hover:bg-[#ECECEC] transition-colors"
             title="Attach file"
           >
             <Plus size={16} />
@@ -1220,34 +1265,34 @@ function InputBar({ onSend, disabled, activeBot, onAttach, activeTool, onToolSel
           <div className="relative">
             <button
               onClick={() => setShowTools(v => !v)}
-              className="flex items-center gap-1 h-8 px-2 rounded-lg text-txt-tertiary hover:bg-[#F5F7FA] transition-colors text-[12px]"
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
+              className="flex items-center gap-1 h-8 px-3 rounded-full text-[#7383A5] hover:bg-[#ECECEC] transition-colors text-[12px] font-medium"
+              style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.25px' }}
             >
               <span style={{ fontSize: 14 }}>🛠️</span> Tools
             </button>
             {showTools && (
-              <div className="absolute bottom-full left-0 mb-1 bg-white border border-[#E2E8F0] rounded-xl shadow-lg z-20 min-w-[200px] py-1 animate-fade-in">
-                <div className="px-3 py-1.5 text-[10px] font-bold text-txt-tertiary tracking-wider">DESIGN TOOLS</div>
+              <div className="absolute bottom-full left-0 mb-1 bg-white border border-[#D5D8DF] shadow-lg z-20 min-w-[200px] py-1 animate-fade-in" style={{ borderRadius: 12 }}>
+                <div className="px-3 py-1.5 text-[10px] font-medium text-[#828996] tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.5px' }}>DESIGN TOOLS</div>
                 {DESIGN_TOOLS.map(t => (
                   <button key={t.id}
                     onClick={() => { onToolSelect?.(t.id); setShowTools(false) }}
-                    className={`w-full text-left px-3 py-2.5 text-[13px] flex items-center gap-2.5 hover:bg-[#F5F7FA] transition-colors ${activeTool === t.id ? 'bg-[#F0F4FF]' : ''}`}
-                    style={{ fontFamily: 'Montserrat, sans-serif' }}
+                    className={`w-full text-left px-3 py-2.5 text-[14px] flex items-center gap-2.5 hover:bg-[#ECECEC] transition-colors ${activeTool === t.id ? 'bg-[#EEF2FF]' : ''}`}
+                    style={{ ...labelMedium }}
                   >
                     <span className="text-[16px]">{t.icon}</span>
-                    <span className="font-medium">{t.label}</span>
-                    {activeTool === t.id && <span className="ml-auto text-primary text-[12px]">✓</span>}
+                    <span className="font-medium" style={{ color: '#0E0E0E' }}>{t.label}</span>
+                    {activeTool === t.id && <span className="ml-auto text-[#386AF6] text-[12px]">✓</span>}
                   </button>
                 ))}
-                <div className="border-t border-[#F0F2F5] mt-1 pt-1">
-                  <div className="px-3 py-1.5 text-[10px] font-bold text-txt-tertiary tracking-wider">UPLOAD</div>
+                <div className="border-t border-[#ECECEC] mt-1 pt-1">
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-[#828996] tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.5px' }}>UPLOAD</div>
                   <button
                     onClick={() => { fileRef.current?.click(); setShowTools(false) }}
-                    className="w-full text-left px-3 py-2.5 text-[13px] flex items-center gap-2.5 hover:bg-[#F5F7FA]"
-                    style={{ fontFamily: 'Montserrat, sans-serif' }}
+                    className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 hover:bg-[#ECECEC]"
+                    style={{ ...labelMedium }}
                   >
-                    <FileUp size={16} className="text-txt-secondary" />
-                    <span className="font-medium">Upload Image / PDF</span>
+                    <FileUp size={16} className="text-[#7383A5]" />
+                    <span className="font-medium" style={{ color: '#0E0E0E' }}>Upload Image / PDF</span>
                   </button>
                 </div>
               </div>
@@ -1258,32 +1303,35 @@ function InputBar({ onSend, disabled, activeBot, onAttach, activeTool, onToolSel
           <button
             onClick={send}
             disabled={!text.trim() || disabled}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
-            style={{ background: text.trim() ? '#386AF6' : '#e5e7eb' }}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
+            style={{ background: text.trim() ? '#386AF6' : '#C3D2FC' }}
           >
-            <Send size={14} color={text.trim() ? '#fff' : '#9ca3af'} />
+            <Send size={15} color="#fff" />
           </button>
         </div>
       </div>
-      <p className="text-[11px] text-txt-tertiary text-center mt-1.5">VSK Gujarat can make mistakes. Please double-check responses.</p>
+      <p className="text-center mt-2" style={{ fontSize: 11, fontFamily: 'Montserrat, sans-serif', color: '#828996', letterSpacing: '0.2px', lineHeight: '14px' }}>VSK Gujarat can make mistakes. Please double-check responses.</p>
     </div>
   )
 }
 
 function ArtifactPanel({ artifact, onClose }) {
   if (!artifact) return null
+  const titleSmall = { fontSize: 14, fontWeight: 600, lineHeight: '20px', letterSpacing: '-0.2px', fontFamily: 'Montserrat, sans-serif' }
   return (
-    <div className="flex flex-col h-full border-l border-bdr bg-white" style={{ minWidth: 0 }}>
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-bdr flex-shrink-0">
+    <div className="flex flex-col h-full border-l bg-white" style={{ minWidth: 0, borderLeftColor: '#D5D8DF' }}>
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b flex-shrink-0" style={{ borderBottomColor: '#D5D8DF' }}>
         <span className="text-[18px]">{artifact.icon}</span>
-        <span className="font-semibold text-[14px] text-txt-primary flex-1 truncate">{artifact.title}</span>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-bdr text-[12px] text-txt-secondary hover:bg-surface-secondary transition-colors">
+        <span className="flex-1 truncate" style={{ ...titleSmall, color: '#0E0E0E' }}>{artifact.title}</span>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[1.5px] hover:bg-[#ECECEC] transition-colors"
+          style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', letterSpacing: '0.25px', borderColor: '#D5D8DF', color: '#7383A5', fontFamily: 'Montserrat, sans-serif' }}>
           <Upload size={13} /> Share
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-bdr text-[12px] text-txt-secondary hover:bg-surface-secondary transition-colors">
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[1.5px] hover:bg-[#ECECEC] transition-colors"
+          style={{ fontSize: 12, fontWeight: 500, lineHeight: '16px', letterSpacing: '0.25px', borderColor: '#D5D8DF', color: '#7383A5', fontFamily: 'Montserrat, sans-serif' }}>
           <Download size={13} /> Download
         </button>
-        <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-txt-tertiary hover:bg-surface-secondary transition-colors">
+        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#ECECEC] transition-colors" style={{ color: '#828996' }}>
           <X size={15} />
         </button>
       </div>
@@ -1294,18 +1342,21 @@ function ArtifactPanel({ artifact, onClose }) {
 
 function ArtifactModal({ artifact, onClose }) {
   if (!artifact) return null
+  const titleSmall = { fontSize: 14, fontWeight: 600, lineHeight: '20px', letterSpacing: '-0.2px', fontFamily: 'Montserrat, sans-serif' }
   return (
     <div className="absolute inset-0 z-50 bg-white flex flex-col animate-slide-in">
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-bdr flex-shrink-0">
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b flex-shrink-0" style={{ borderBottomColor: '#D5D8DF' }}>
         <span className="text-[18px]">{artifact.icon}</span>
-        <span className="font-semibold text-[14px] text-txt-primary flex-1 truncate">{artifact.title}</span>
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-bdr text-[12px] text-txt-secondary">
+        <span className="flex-1 truncate" style={{ ...titleSmall, color: '#0E0E0E' }}>{artifact.title}</span>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[1.5px]"
+          style={{ fontSize: 12, fontWeight: 500, borderColor: '#D5D8DF', color: '#7383A5', fontFamily: 'Montserrat, sans-serif' }}>
           <Upload size={13} /> Share
         </button>
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-bdr text-[12px] text-txt-secondary">
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[1.5px]"
+          style={{ fontSize: 12, fontWeight: 500, borderColor: '#D5D8DF', color: '#7383A5', fontFamily: 'Montserrat, sans-serif' }}>
           <Download size={13} /> Download
         </button>
-        <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-txt-tertiary hover:bg-surface-secondary">
+        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#ECECEC]" style={{ color: '#828996' }}>
           <X size={15} />
         </button>
       </div>
@@ -2094,7 +2145,7 @@ export default function SuperHomePage() {
   const hasMessages = messages.length > 0
 
   return (
-    <div className="flex h-full overflow-hidden bg-white">
+    <div className="flex h-full overflow-hidden" style={{ background: '#ECECEC' }}>
 
       {/* Sidebar */}
       {sidebarOpen && (
@@ -2118,18 +2169,19 @@ export default function SuperHomePage() {
       </div>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full">
+      <div className="flex-1 flex flex-col min-w-0 h-full" style={{ background: '#ECECEC' }}>
 
         {/* Top bar */}
-        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-bdr flex-shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0 bg-white" style={{ borderBottomColor: '#D5D8DF' }}>
           <button
-            className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-txt-secondary hover:bg-surface-secondary"
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#ECECEC]"
             onClick={() => setSidebar(true)}
+            style={{ color: '#7383A5' }}
           >
             <Menu size={18} />
           </button>
 
-          <span className="text-[14px] font-semibold text-txt-primary">VSK Gujarat</span>
+          <span style={{ fontSize: 16, fontWeight: 700, lineHeight: '20px', color: '#0E0E0E', fontFamily: 'Montserrat, sans-serif' }}>VSK Gujarat</span>
 
           <div className="flex-1" />
         </div>
@@ -2138,8 +2190,8 @@ export default function SuperHomePage() {
         <div className="flex-1 flex min-h-0">
 
           {/* Message list */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-4 pt-4">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden" style={{ background: '#FFFFFF' }}>
+            <div className="flex-1 overflow-y-auto px-4 pt-4" style={{ background: '#FFFFFF' }}>
               {!hasMessages ? (
                 <WelcomeScreen botName={activeBot} onChip={handleSend} role={role} profile={userProfile} />
               ) : (
