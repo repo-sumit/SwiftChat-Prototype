@@ -35,7 +35,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { routeIntentSync } from '../globalIntentRouter.js'
-import { routeDataQuery } from '../dataQueryRouter.js'
+import { routeDataQuery, isQuestionShape } from '../dataQueryRouter.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CASES_PATH = path.resolve(__dirname, 'qaCases.json')
@@ -136,21 +136,21 @@ function compareTuple({ responseType, actionId, entities, citations, analytics }
 }
 
 // ── local resolver ─────────────────────────────────────────────────────────
+// Mirrors handleSend's runtime priority:
+//   - question-shape inputs ("how many", "kitne", "?") → try data first
+//   - else → try action first; data is the fallback when action is unknown
 function runLocal(c) {
+  if (isQuestionShape(c.input)) {
+    const analytics = routeDataQuery({ text: c.input, role: c.role })
+    if (analytics) {
+      return { responseType: 'analytics', actionId: null, entities: {}, citations: [], analytics, raw: null }
+    }
+  }
   const r = routeIntentSync({ text: c.input, role: c.role })
-  // Layer 1.5: only consult the data-query layer when the action layer
-  // returned 'unknown'. Mirrors the runtime ordering in handleSend.
   if (r.kind === 'unknown' || r.kind === 'module-fallback') {
     const analytics = routeDataQuery({ text: c.input, role: c.role })
     if (analytics) {
-      return {
-        responseType: 'analytics',
-        actionId: null,
-        entities: {},
-        citations: [],
-        analytics,
-        raw: r,
-      }
+      return { responseType: 'analytics', actionId: null, entities: {}, citations: [], analytics, raw: r }
     }
   }
   return {

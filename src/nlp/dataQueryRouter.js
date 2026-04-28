@@ -12,7 +12,7 @@
 // Returns either an analytics payload (see dataAnswerBuilder.js for shape)
 // or null when the query doesn't match any data pattern.
 
-import { matchDataQuery, detectLanguage } from './dataQueryPatterns.js'
+import { matchDataQuery, detectLanguage, isQuestionShape } from './dataQueryPatterns.js'
 import { extractEntities } from './localPatterns.js'
 import { buildAnswer } from './dataAnswerBuilder.js'
 
@@ -24,3 +24,7 @@ export function routeDataQuery({ text, role } = {}) {
   const language = detectLanguage(text)
   return buildAnswer({ queryType: hit.queryType, role, entities, language })
 }
+
+// Re-export so handleSend / qaRunner can detect question-shape without
+// importing patterns directly.
+export { isQuestionShape } from './dataQueryPatterns.js'

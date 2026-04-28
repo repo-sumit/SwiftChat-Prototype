@@ -55,6 +55,20 @@ export const DATA_QUERY_PATTERNS = [
   { match: /^\s*class\s*\d+\s*\??\s*$/i, queryType: 'CLASS_TOTAL' },
 ]
 
+// Heuristic: does the user's input look like a question rather than a command?
+// Used by the router to decide whether to consult the data layer BEFORE the
+// action layer ("how many students?" should yield an analytics card, not
+// route to OPEN_CLASS_DASHBOARD).
+export function isQuestionShape(text) {
+  if (!text) return false
+  if (/\?\s*$/.test(text)) return true
+  // Starts with a question word (English / Hinglish / Gujarati-translit).
+  if (/^\s*(kitne|kitna|kaha|kahaan|kya|kyun|kaise|kab|how\s*many|how|what|why|where|when|tell\s*me|explain|describe|batao|samjhao|bata|samjha|kitla|kety)\b/i.test(text)) return true
+  // Contains a count-asking phrase.
+  if (/\b(kitne|kitna|how\s*many|kitla|how\s*much)\b/i.test(text)) return true
+  return false
+}
+
 // Detect approximate language for response shaping.
 export function detectLanguage(text) {
   if (!text) return 'en'
