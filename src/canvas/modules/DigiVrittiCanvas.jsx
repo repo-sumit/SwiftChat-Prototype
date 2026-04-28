@@ -854,6 +854,7 @@ function ApplyView({ context }) {
 // ─────────────────────────────────────────────────────────────────────────────
 import {
   StudentSelectView, OptOutView, ReviewView, PaymentQueueView, AnalyticsView,
+  AIResultCanvas, AIDeepDiveCanvas,
 } from './digivritti/extraViews'
 
 export default function DigiVrittiCanvas({ context = {} }) {
@@ -866,6 +867,8 @@ export default function DigiVrittiCanvas({ context = {} }) {
   if (view === 'review')          return <ReviewView        context={context} />
   if (view === 'payment-queue')   return <PaymentQueueView  context={context} />
   if (view === 'analytics')       return <AnalyticsView     context={context} />
+  if (view === 'ai-result')       return <AIResultCanvas    context={context} />
+  if (view === 'ai-deep-dive')    return <AIDeepDiveCanvas  context={context} />
   if (view === 'edit') {
     return <EditView
       context={context}

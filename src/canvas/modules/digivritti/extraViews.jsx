@@ -20,6 +20,9 @@ import {
   markOptOut, syncToPayment,
 } from '../../../utils/digivrittiBackend'
 import DocumentUpload from '../../../components/digivritti/DocumentUpload'
+import {
+  runAIQuery, runDeepDiveTurn, getAIRoleMeta, getDeepDiveScenario,
+} from '../../../features/digivritti/ai/aiQueryEngine'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tokens / atoms (duplicated from DigiVrittiCanvas to keep this file standalone)
@@ -832,6 +835,294 @@ export function AnalyticsView({ context }) {
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <PrimaryBtn tone="ghost" onClick={closeCanvas}>Close</PrimaryBtn>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI ANALYTICS CANVAS — full result table, SQL toggle, AI insight.
+// Used when an AI chat reply has a long table the user wants to scan in full.
+// ─────────────────────────────────────────────────────────────────────────────
+function AIResultsTable({ rows }) {
+  if (!rows || rows.length === 0) {
+    return (
+      <div style={{
+        padding: 24, fontFamily: FONT, color: C.textTertiary,
+        background: C.surface, border: `1px solid ${C.borderDefault}`,
+        borderRadius: 12, textAlign: 'center', fontSize: 13,
+      }}>No data.</div>
+    )
+  }
+  const keys = Object.keys(rows[0])
+  return (
+    <div style={{
+      background: C.surface, border: `1px solid ${C.borderDefault}`,
+      borderRadius: 12, overflow: 'hidden',
+    }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT }}>
+          <thead style={{ background: C.surfaceTint }}>
+            <tr>
+              {keys.map(k => (
+                <th key={k} style={{
+                  textAlign: 'left', padding: '10px 14px',
+                  fontSize: 10, fontWeight: 600, letterSpacing: '0.4px',
+                  color: C.textSecondary, textTransform: 'uppercase',
+                  borderBottom: `1px solid ${C.borderSubtle}`, whiteSpace: 'nowrap',
+                }}>{k.replace(/_/g, ' ').toUpperCase()}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                {keys.map(k => {
+                  const v = r[k]
+                  const important = typeof v === 'number' || /%|₹|\bCr\b|\bL\b/.test(String(v))
+                  return (
+                    <td key={k} style={{
+                      padding: '10px 14px', fontSize: 13,
+                      color: important ? C.textPrimary : C.textSecondary,
+                      fontWeight: important ? 600 : 500,
+                      borderBottom: `1px solid ${C.borderSubtle}`, whiteSpace: 'nowrap',
+                    }}>{v == null ? '' : String(v)}</td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function AISqlPanel({ sql }) {
+  return (
+    <div style={{
+      background: '#0E0E0E', borderRadius: 12, overflow: 'hidden',
+      fontFamily: 'SFMono-Regular,Menlo,Consolas,monospace',
+    }}>
+      <div style={{
+        padding: '8px 14px', borderBottom: '1px solid #1F2233',
+        fontFamily: FONT, fontSize: 10, fontWeight: 700,
+        letterSpacing: '0.3px', color: '#A5C8FF', textTransform: 'uppercase',
+      }}>🔄 NL → SQL Engine</div>
+      <pre style={{
+        margin: 0, padding: '12px 14px', color: '#E2EAFF',
+        fontSize: 12, lineHeight: '20px',
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+      }}>{sql}</pre>
+    </div>
+  )
+}
+
+function AIInsightPanel({ text }) {
+  if (!text) return null
+  return (
+    <div style={{
+      background: C.successBanner, border: `1px solid ${C.success}`,
+      borderRadius: 12, padding: '12px 14px',
+      display: 'flex', gap: 10, alignItems: 'flex-start',
+    }}>
+      <span style={{ fontSize: 18, lineHeight: '18px' }}>💡</span>
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.3px',
+          color: C.successText, textTransform: 'uppercase', marginBottom: 2,
+          fontFamily: FONT,
+        }}>AI Insight</div>
+        <div style={{
+          fontSize: 13, lineHeight: '20px', color: C.successText,
+          fontWeight: 500, fontFamily: FONT,
+        }}>{text}</div>
+      </div>
+    </div>
+  )
+}
+
+export function AIResultCanvas({ context }) {
+  const { closeCanvas } = useApp()
+  const [showSql, setShowSql] = useState(false)
+  const out = useMemo(
+    () => runAIQuery(context.role, context.queryId),
+    [context.role, context.queryId]
+  )
+  const meta = getAIRoleMeta(context.role)
+
+  if (!out) {
+    return (
+      <div style={{ padding: 16, fontFamily: FONT, color: C.textPrimary }}>
+        <SectionHeader
+          icon={<TrendingUp size={14} color={C.brand} />}
+          eyebrow="DigiVritti AI"
+          title="Query not available"
+          sub="This AI query is not available for your role."
+        />
+        <PrimaryBtn tone="ghost" onClick={closeCanvas}>Close</PrimaryBtn>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: 16, fontFamily: FONT, color: C.textPrimary }}>
+      <SectionHeader
+        icon={<TrendingUp size={14} color={C.brand} />}
+        eyebrow={`DigiVritti AI · ${meta.shortRole}`}
+        title={out.question}
+        sub={out.category ? `Category · ${out.category}` : undefined}
+      />
+
+      <div style={{
+        display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap',
+      }}>
+        <button
+          onClick={() => setShowSql(false)}
+          style={{
+            padding: '4px 12px', borderRadius: 999,
+            border: `1px solid ${!showSql ? C.brand : C.borderDefault}`,
+            background: !showSql ? C.brandSubtle : C.surface,
+            color: !showSql ? C.brand : C.textSecondary,
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.2px',
+            cursor: 'pointer', fontFamily: FONT,
+          }}
+        >📊 Results</button>
+        <button
+          onClick={() => setShowSql(true)}
+          style={{
+            padding: '4px 12px', borderRadius: 999,
+            border: `1px solid ${showSql ? C.brand : C.borderDefault}`,
+            background: showSql ? C.brandSubtle : C.surface,
+            color: showSql ? C.brand : C.textSecondary,
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.2px',
+            cursor: 'pointer', fontFamily: FONT,
+          }}
+        >🔄 NL → SQL</button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+        {showSql
+          ? <AISqlPanel sql={out.sql} />
+          : <AIResultsTable rows={out.result} />}
+        <AIInsightPanel text={out.insight} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <PrimaryBtn tone="ghost" onClick={closeCanvas}>Close</PrimaryBtn>
+      </div>
+    </div>
+  )
+}
+
+export function AIDeepDiveCanvas({ context }) {
+  const { closeCanvas } = useApp()
+  const [turnIndex, setTurnIndex] = useState(context.turnIndex || 0)
+  const [showSql, setShowSql] = useState(false)
+  const scenario = getDeepDiveScenario(context.scenarioId)
+  const turn = useMemo(
+    () => runDeepDiveTurn(context.scenarioId, turnIndex),
+    [context.scenarioId, turnIndex]
+  )
+
+  if (!scenario || !turn) {
+    return (
+      <div style={{ padding: 16, fontFamily: FONT, color: C.textPrimary }}>
+        <SectionHeader
+          icon={<TrendingUp size={14} color={C.brand} />}
+          eyebrow="Deep dive"
+          title="Scenario not available"
+        />
+        <PrimaryBtn tone="ghost" onClick={closeCanvas}>Close</PrimaryBtn>
+      </div>
+    )
+  }
+
+  const dotRow = (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+      {Array.from({ length: turn.totalTurns }).map((_, i) => (
+        <span key={i} style={{
+          width: 6, height: 6, borderRadius: 999,
+          background: i <= turnIndex ? C.brand : C.borderDefault,
+          display: 'inline-block',
+        }} />
+      ))}
+      <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, color: C.textPrimary }}>
+        Q{turnIndex + 1}/{turn.totalTurns}
+      </span>
+    </div>
+  )
+
+  return (
+    <div style={{ padding: 16, fontFamily: FONT, color: C.textPrimary }}>
+      <SectionHeader
+        icon={<TrendingUp size={14} color={C.brand} />}
+        eyebrow={`Deep dive · ${scenario.persona}`}
+        title={scenario.title}
+        sub={scenario.description}
+      />
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+        fontSize: 11, color: C.textSecondary, fontFamily: FONT,
+      }}>
+        <span style={{ fontWeight: 600, color: C.textPrimary }}>{turn.question}</span>
+        {dotRow}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setShowSql(false)}
+          style={{
+            padding: '4px 12px', borderRadius: 999,
+            border: `1px solid ${!showSql ? C.brand : C.borderDefault}`,
+            background: !showSql ? C.brandSubtle : C.surface,
+            color: !showSql ? C.brand : C.textSecondary,
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.2px',
+            cursor: 'pointer', fontFamily: FONT,
+          }}
+        >📊 Results</button>
+        <button
+          onClick={() => setShowSql(true)}
+          style={{
+            padding: '4px 12px', borderRadius: 999,
+            border: `1px solid ${showSql ? C.brand : C.borderDefault}`,
+            background: showSql ? C.brandSubtle : C.surface,
+            color: showSql ? C.brand : C.textSecondary,
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.2px',
+            cursor: 'pointer', fontFamily: FONT,
+          }}
+        >🔄 NL → SQL</button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+        {showSql
+          ? <AISqlPanel sql={turn.sql} />
+          : <AIResultsTable rows={turn.result} />}
+        <AIInsightPanel text={turn.insight} />
+      </div>
+
+      {turn.isLastTurn && (
+        <div style={{
+          background: C.successBg, color: C.successText,
+          border: `1px solid ${C.success}`, borderRadius: 10,
+          padding: '10px 12px', marginBottom: 12,
+          fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: '0.2px',
+        }}>{turn.completion || '✅ Analysis Complete'}</div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <PrimaryBtn tone="ghost" onClick={closeCanvas}>Close</PrimaryBtn>
+        {turnIndex > 0 && (
+          <PrimaryBtn tone="primary" onClick={() => { setTurnIndex(turnIndex - 1); setShowSql(false) }}>
+            ← Previous
+          </PrimaryBtn>
+        )}
+        {!turn.isLastTurn && (
+          <PrimaryBtn tone="primary" onClick={() => { setTurnIndex(turnIndex + 1); setShowSql(false) }}>
+            Next follow-up <ArrowRight size={14} />
+          </PrimaryBtn>
+        )}
       </div>
     </div>
   )

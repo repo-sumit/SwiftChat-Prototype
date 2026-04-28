@@ -18,6 +18,13 @@ import {
 } from '../data/digivritti/stateFlows'
 import { SYSTEM_STATUS } from '../data/digivritti/systemStates'
 import { getApplications, statusBucket, SCHEMES } from '../data/digivritti/applications'
+import {
+  getAIQueriesForRole, runAIQuery, runCustomAIQuery,
+  getDeepDivesForRole, runDeepDiveTurn, getAIRoleMeta, normalizeRole,
+} from '../features/digivritti/ai/aiQueryEngine'
+import {
+  aiResultCardHtml, aiDeepDiveMenuHtml,
+} from '../features/digivritti/ai/aiCardHtml'
 
 // Local design tokens (mirror swiftchat-design-system.md semantic palette).
 const C = {
@@ -200,7 +207,7 @@ function welcome(role, profile) {
         { label: '✅ UTR / Success records',  trigger: 'dv:canvas:payment-queue:success', variant: 'primary' },
         { label: '📊 District success rate',  trigger: 'dv:s:districts',                  variant: 'primary' },
         { label: '💰 Sanctioned vs disbursed', trigger: 'dv:s:metrics',                    variant: 'primary' },
-        { label: '✨ Ask Payment AI',          trigger: 'dv:s:ai',                         variant: 'primary' },
+        { label: '✨ Ask Payment AI',          trigger: 'dv:p:ai',                         variant: 'primary' },
       ],
     }
   }
@@ -869,6 +876,261 @@ function state(step) {
   return null
 }
 
+// ── AI assistant (role-scoped, multi-turn) ──────────────────────────────────
+// `dv:ai:<sub>[:<args>]` — unified AI flow:
+//   menu                       → list role's question chips + deep-dive entry
+//   run:<queryId>              → execute query, append AI result card (with user bubble)
+//   sql:<queryId>              → re-render same card with technical SQL block
+//   full:<queryId>             → open full-table canvas
+//   ask                        → free-text prompt (server side: composer captures it)
+//   dives                      → list available deep-dive scenarios
+//   dive:<scenarioId>          → start scenario at turn 0
+//   dive:<scenarioId>:<turn>   → run that turn (0 / 1 / 2)
+function aiDirective(rest, role, profile) {
+  const r = normalizeRole(role)
+  const meta = getAIRoleMeta(r)
+  const parts = (rest || '').split(':')
+  const sub = (parts[0] || 'menu').toLowerCase()
+  const args = parts.slice(1)
+  const firstName = profile?.name?.split(' ')[0] || 'there'
+
+  // Build the user-bubble + bot reply for a single AI query.
+  const buildQueryReply = (out, { showSql = false } = {}) => {
+    const html = aiResultCardHtml({
+      question: out.question,
+      sql: out.sql,
+      result: out.result,
+      insight: out.insight,
+      category: out.category,
+      showSql,
+      persona: meta.persona,
+      fallbackNotice: out.fallbackNotice,
+      preview: (out.result || []).length > 5,
+    })
+    const tooLarge = (out.result || []).length > 5
+    const actions = [
+      ...(showSql
+        ? [{ label: '👁 Hide SQL',  trigger: `dv:ai:run:${out.queryId}`, variant: 'primary' }]
+        : [{ label: '🔄 Show SQL',  trigger: `dv:ai:sql:${out.queryId}`, variant: 'primary' }]
+      ),
+      ...(tooLarge
+        ? [{ label: '📋 Open full table', trigger: `dv:ai:full:${out.queryId}`, variant: 'primary' }]
+        : []
+      ),
+      ...((out.followups || []).slice(0, 2).map(f => ({
+        label: `❓ ${f.q.length > 48 ? f.q.slice(0, 46) + '…' : f.q}`,
+        trigger: `dv:ai:run:${f.id}`,
+        variant: 'primary',
+      }))),
+      { label: '✨ More AI queries',  trigger: 'dv:ai:menu', variant: 'primary' },
+      { label: '🏠 DigiVritti home',  trigger: 'dv:start',   variant: 'primary' },
+    ]
+    return {
+      // Empty bot text — the AI card carries everything.
+      text: '',
+      html,
+      actions,
+      progress: ['Analyzing DigiVritti data…'],
+      userBubble: out.question,
+    }
+  }
+
+  // ── Menu ──
+  if (sub === 'menu' || sub === '' ) {
+    const queries = getAIQueriesForRole(r)
+    const dives = getDeepDivesForRole(r)
+    if (queries.length === 0) {
+      return {
+        text: `${meta.label} is not available for your role yet.`,
+        actions: [{ label: '🏠 DigiVritti home', trigger: 'dv:start', variant: 'primary' }],
+      }
+    }
+    const introHtml = `<div style="font-family:${C.font};margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10px;font-weight:600;letter-spacing:0.4px;color:${C.textSecondary};text-transform:uppercase;margin-bottom:8px">
+        <span>💬 Natural Language</span>
+        <span style="color:${C.textTertiary}">›</span>
+        <span style="color:${C.brand}">⚡ AI Analytics Engine</span>
+        <span style="color:${C.textTertiary}">›</span>
+        <span>📊 Results + 💡 Insight</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:${C.brand};text-transform:uppercase">✨ DigiVritti AI · ${meta.shortRole}</span>
+        <span style="background:${C.brandSubtle};color:${C.brand};font-size:10px;font-weight:600;letter-spacing:0.3px;padding:2px 8px;border-radius:999px">${queries.length} questions${dives.length ? ` · ${dives.length} deep dives` : ''}</span>
+      </div>
+      <div style="font-size:12px;color:${C.textSecondary};line-height:18px">I can analyze DigiVritti data for your role. Choose a question below or type your own.</div>
+    </div>${dives.length ? aiDeepDiveMenuHtml(dives) : ''}`
+
+    const queryActions = queries.map(q => ({
+      label: `❓ ${q.q.length > 60 ? q.q.slice(0, 58) + '…' : q.q}`,
+      trigger: `dv:ai:run:${q.id}`,
+      variant: 'primary',
+    }))
+    const diveActions = dives.map(s => ({
+      label: `🧠 ${s.title}`,
+      trigger: `dv:ai:dive:${s.id}:0`,
+      variant: 'primary',
+    }))
+    return {
+      text: `Namaste ${firstName}! ${meta.label} ready.`,
+      html: introHtml,
+      actions: [...queryActions, ...diveActions, { label: '🏠 DigiVritti home', trigger: 'dv:start', variant: 'primary' }],
+    }
+  }
+
+  // ── Run / SQL toggle ──
+  if (sub === 'run' || sub === 'sql') {
+    const id = args.join(':')
+    const out = runAIQuery(r, id)
+    if (!out) {
+      return {
+        text: `That query is not available for your role.`,
+        actions: [{ label: '✨ More AI queries', trigger: 'dv:ai:menu', variant: 'primary' }],
+      }
+    }
+    return buildQueryReply(out, { showSql: sub === 'sql' })
+  }
+
+  // ── Open full table in canvas ──
+  if (sub === 'full') {
+    const id = args.join(':')
+    const out = runAIQuery(r, id)
+    if (!out) return null
+    return {
+      text: `📋 Opening the full table for "${out.question}"…`,
+      openCanvas: {
+        type: 'digivritti',
+        view: 'ai-result',
+        role: r,
+        queryId: out.queryId,
+      },
+    }
+  }
+
+  // ── Custom typed question — composer side will dispatch dv:ai:ask:<text> ──
+  if (sub === 'ask') {
+    const question = args.join(':')
+    const out = runCustomAIQuery(r, question)
+    if (!out) return null
+    if (out.kind === 'scenario') {
+      return aiDirective(`dive:${out.scenarioId}:0`, role, profile)
+    }
+    return buildQueryReply(out)
+  }
+
+  // ── Deep-dive scenario list ──
+  if (sub === 'dives') {
+    const dives = getDeepDivesForRole(r)
+    if (dives.length === 0) {
+      return {
+        text: `No deep-dive scenarios available for your role.`,
+        actions: [{ label: '✨ More AI queries', trigger: 'dv:ai:menu', variant: 'primary' }],
+      }
+    }
+    return {
+      text: `🧠 Deep-dive scenarios — multi-turn investigations:`,
+      html: aiDeepDiveMenuHtml(dives),
+      actions: [
+        ...dives.map(s => ({ label: `▶️ ${s.title}`, trigger: `dv:ai:dive:${s.id}:0`, variant: 'primary' })),
+        { label: '✨ More AI queries', trigger: 'dv:ai:menu', variant: 'primary' },
+      ],
+    }
+  }
+
+  // ── Deep-dive turn ──
+  if (sub === 'dive') {
+    const scenarioId = args[0]
+    const turnIndex = Number(args[1] || 0) || 0
+    const turn = runDeepDiveTurn(scenarioId, turnIndex)
+    if (!turn) {
+      return {
+        text: `That scenario is not available.`,
+        actions: [{ label: '🧠 Deep-dive list', trigger: 'dv:ai:dives', variant: 'primary' }],
+      }
+    }
+    const html = aiResultCardHtml({
+      question: turn.question,
+      sql: turn.sql,
+      result: turn.result,
+      insight: turn.insight,
+      persona: turn.persona,
+      preview: (turn.result || []).length > 5,
+      deepDive: { turnIndex: turn.turnIndex, totalTurns: turn.totalTurns, title: turn.title },
+    })
+
+    const actions = []
+    if (!turn.isLastTurn && turn.followup) {
+      actions.push({
+        label: `❓ ${turn.followup.length > 56 ? turn.followup.slice(0, 54) + '…' : turn.followup}`,
+        trigger: `dv:ai:dive:${scenarioId}:${turnIndex + 1}`,
+        variant: 'primary',
+      })
+    }
+    actions.push({ label: '🔄 Show SQL',         trigger: `dv:ai:dive_sql:${scenarioId}:${turnIndex}`, variant: 'primary' })
+    if ((turn.result || []).length > 5) {
+      actions.push({ label: '📋 Open full table', trigger: `dv:ai:dive_full:${scenarioId}:${turnIndex}`, variant: 'primary' })
+    }
+    if (turn.isLastTurn) {
+      actions.push({ label: '✨ More AI queries', trigger: 'dv:ai:menu', variant: 'primary' })
+      actions.push({ label: '🏠 DigiVritti home', trigger: 'dv:start',  variant: 'primary' })
+    }
+
+    const completionBanner = turn.isLastTurn
+      ? `<div style="margin-top:8px;background:${C.successBg};color:${C.successText};border:1px solid ${C.success};border-radius:10px;padding:10px 12px;font-family:${C.font};font-size:12px;font-weight:600;letter-spacing:0.2px">${turn.completion || '✅ Analysis Complete'}</div>`
+      : ''
+
+    return {
+      text: '',
+      html: html + completionBanner,
+      actions,
+      progress: ['Continuing the analysis…'],
+      userBubble: turn.question,
+    }
+  }
+
+  // ── Deep-dive SQL toggle ──
+  if (sub === 'dive_sql') {
+    const scenarioId = args[0]
+    const turnIndex = Number(args[1] || 0) || 0
+    const turn = runDeepDiveTurn(scenarioId, turnIndex)
+    if (!turn) return null
+    const html = aiResultCardHtml({
+      question: turn.question,
+      sql: turn.sql,
+      result: turn.result,
+      insight: turn.insight,
+      persona: turn.persona,
+      showSql: true,
+      preview: (turn.result || []).length > 5,
+      deepDive: { turnIndex: turn.turnIndex, totalTurns: turn.totalTurns, title: turn.title },
+    })
+    return {
+      text: '',
+      html,
+      actions: [
+        { label: '👁 Hide SQL', trigger: `dv:ai:dive:${scenarioId}:${turnIndex}`, variant: 'primary' },
+        { label: '🧠 Deep-dive list', trigger: 'dv:ai:dives', variant: 'primary' },
+      ],
+    }
+  }
+
+  // ── Deep-dive full table in canvas ──
+  if (sub === 'dive_full') {
+    const scenarioId = args[0]
+    const turnIndex = Number(args[1] || 0) || 0
+    return {
+      text: `📋 Opening the full deep-dive table…`,
+      openCanvas: {
+        type: 'digivritti',
+        view: 'ai-deep-dive',
+        scenarioId,
+        turnIndex,
+      },
+    }
+  }
+
+  return null
+}
+
 // ── Canvas directives ───────────────────────────────────────────────────────
 // `dv:canvas:<view>[:<arg>]` opens an embedded canvas inside SwiftChat.
 //   list[:nl|ns]      → application list, optional scheme filter
@@ -991,6 +1253,25 @@ export function dispatchDigiVritti(text, role, profile) {
 
   // Canvas directives — common to all teacher-style flows.
   if (arena === 'canvas') return canvasDirective(rest)
+
+  // Unified AI assistant.
+  if (arena === 'ai') return aiDirective(rest, role, profile)
+
+  // Legacy AI entry points → redirect to the role-aware unified flow.
+  // - dv:t:ai      → Teacher AI menu
+  // - dv:a:ai      → CRC / Cluster Approver AI menu
+  // - dv:d:ai      → DEO AI menu
+  // - dv:s:ai      → State / PFMS AI menu (handled per role)
+  // - dv:p:ai      → PFMS AI menu (alias)
+  // - dv:pr:ai     → Principal AI menu (alias)
+  if (restLower === 'ai') {
+    if (arena === 't')  return aiDirective('menu', 'teacher',         profile)
+    if (arena === 'a')  return aiDirective('menu', role === 'principal' ? 'principal' : 'crc', profile)
+    if (arena === 'd')  return aiDirective('menu', 'deo',             profile)
+    if (arena === 's')  return aiDirective('menu', role === 'pfms' ? 'pfms' : 'state_secretary', profile)
+    if (arena === 'p')  return aiDirective('menu', 'pfms',            profile)
+    if (arena === 'pr') return aiDirective('menu', 'principal',       profile)
+  }
 
   // Teacher
   if (arena === 't') {

@@ -1841,6 +1841,11 @@ export default function SuperHomePage() {
       }
       const result = dispatchDigiVritti(text, role, userProfile)
       if (result) {
+        // Some replies (DigiVritti AI) want a user bubble showing the
+        // question before the bot answer — synthesize it here.
+        if (result.userBubble) {
+          setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: result.userBubble, opts: [] }])
+        }
         addBot(result.text || '', result.options || [], {
           html: result.html,
           actions: result.actions,
