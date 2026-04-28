@@ -5,10 +5,16 @@
 // GET  /healthz     → { ok, model }
 
 import 'dotenv/config'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import express from 'express'
 import cors from 'cors'
 import { interpretViaGroq } from './interpret.js'
 import { retrieveAndAnswer } from './rag/retriever.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const KNOWLEDGE_DIR = path.resolve(__dirname, 'data', 'knowledge')
 
 const app = express()
 const PORT = Number(process.env.PORT || 8787)
@@ -122,6 +128,30 @@ app.post('/message', async (req, res) => {
   } catch (err) {
     console.error('[/message]', err?.message || err)
     res.status(500).json({ error: err?.message || 'message failed' })
+  }
+})
+
+// ── /rag/knowledge/:source — return raw markdown for a knowledge file ─────
+// Used by the frontend KnowledgeCanvas when the user clicks a citation chip.
+// Strict whitelist: source must be a known .md filename, no path traversal.
+app.get('/rag/knowledge/:source', async (req, res) => {
+  const raw = String(req.params.source || '')
+  // Only allow safe filename chars + must end in .md.
+  if (!/^[A-Za-z0-9_-]+\.md$/.test(raw)) {
+    return res.status(400).json({ error: 'invalid source name' })
+  }
+  const fullPath = path.join(KNOWLEDGE_DIR, raw)
+  // Defence-in-depth: confirm the resolved path is still inside KNOWLEDGE_DIR.
+  if (!fullPath.startsWith(KNOWLEDGE_DIR + path.sep)) {
+    return res.status(400).json({ error: 'path traversal blocked' })
+  }
+  try {
+    const content = await readFile(fullPath, 'utf8')
+    res.json({ source: raw, content })
+  } catch (err) {
+    if (err.code === 'ENOENT') return res.status(404).json({ error: 'not found' })
+    console.error('[/rag/knowledge]', err?.message || err)
+    res.status(500).json({ error: 'read failed' })
   }
 })
 

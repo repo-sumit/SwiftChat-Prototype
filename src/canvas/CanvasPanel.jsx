@@ -7,6 +7,7 @@ import DataEntryCanvas   from './modules/DataEntryCanvas'
 import PDFCanvas         from './modules/PDFCanvas'
 import ReportCanvas      from './modules/ReportCanvas'
 import DigiVrittiCanvas  from './modules/DigiVrittiCanvas'
+import KnowledgeCanvas   from './modules/KnowledgeCanvas'
 // Legacy canvas tabs (fallback for old chatId-based canvas)
 import RichTextEditor    from './RichTextEditor'
 import DataForm          from './DataForm'
@@ -36,6 +37,13 @@ const MODULE_META = {
     if (ctx.view === 'analytics')      return `DigiVritti · State Analytics`
     return `DigiVritti${scheme} · Applications`
   } },
+  knowledge: {
+    icon: '📚',
+    title: ctx => {
+      const pretty = String(ctx.source || '').replace(/\.md$/i, '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      return ctx.section ? `${pretty} · ${ctx.section}` : pretty
+    },
+  },
 }
 
 const LEGACY_TABS = [
@@ -141,6 +149,7 @@ export default function CanvasPanel() {
               {ctx.type === 'pdf'         && <PDFCanvas         context={ctx} />}
               {ctx.type === 'report'      && <ReportCanvas      context={ctx} />}
               {ctx.type === 'digivritti'  && <DigiVrittiCanvas  context={ctx} />}
+              {ctx.type === 'knowledge'   && <KnowledgeCanvas   context={ctx} />}
             </>
           ) : (
             <>

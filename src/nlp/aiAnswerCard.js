@@ -35,11 +35,20 @@ function prettySource(src) {
 
 // Render the answer card. Returns an HTML string suitable for
 // dangerouslySetInnerHTML in the chat bubble.
+//
+// Citation chips become clickable buttons that open the source markdown in
+// the right-side canvas (scrolled to + highlighting the cited section). They
+// dispatch via the global window._vskOpenKnowledge handler — registered by
+// SuperHomePage in a useEffect — because dangerouslySetInnerHTML can't carry
+// React onClick handlers.
 export function aiAnswerCardHtml({ text, citations = [], language }) {
   const body = esc(text || '').replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>')
-  const chips = (citations || []).slice(0, 6).map(c =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:${C.brandSubtle};color:${C.brand};font-size:11px;font-weight:600;letter-spacing:0.2px;font-family:${FONT};max-width:100%;white-space:normal;line-height:1.4;overflow-wrap:anywhere;word-break:break-word">📄 ${esc(prettySource(c.source))}${c.section ? ` · ${esc(c.section)}` : ''}</span>`
-  ).join('')
+  const chips = (citations || []).slice(0, 6).map(c => {
+    const src = esc(c.source || '')
+    const sec = esc(c.section || '')
+    const onClick = `window._vskOpenKnowledge && window._vskOpenKnowledge(${JSON.stringify(c.source || '')}, ${JSON.stringify(c.section || '')});return false;`
+    return `<button type="button" data-source="${src}" data-section="${sec}" onclick="${esc(onClick)}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:${C.brandSubtle};color:${C.brand};font-size:11px;font-weight:600;letter-spacing:0.2px;font-family:${FONT};max-width:100%;white-space:normal;line-height:1.4;overflow-wrap:anywhere;word-break:break-word;border:1px solid ${C.aiCardBorder || '#D5DDF5'};cursor:pointer;transition:transform 120ms ease,box-shadow 120ms ease" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 2px 6px rgba(56,106,246,0.18)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">📄 ${esc(prettySource(c.source))}${c.section ? ` · ${esc(c.section)}` : ''} <span style="opacity:0.6;font-size:10px">↗</span></button>`
+  }).join('')
 
   return `<div style="font-family:${FONT};color:${C.textPrimary};max-width:100%;min-width:0;box-sizing:border-box">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10px;font-weight:600;letter-spacing:0.4px;color:${C.textSecondary};text-transform:uppercase;margin-bottom:8px">

@@ -1965,6 +1965,17 @@ export default function SuperHomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, activeChatId])
 
+  // Citation chip → open the source markdown in the knowledge canvas.
+  // Registered as a window global because the chip HTML is injected via
+  // dangerouslySetInnerHTML inside the chat bubble.
+  useEffect(() => {
+    window._vskOpenKnowledge = (source, section) => {
+      if (!source) return
+      openCanvas({ type: 'knowledge', source, section: section || '' })
+    }
+    return () => { delete window._vskOpenKnowledge }
+  }, [openCanvas])
+
   // Window globals for interactive inline cards
   useEffect(() => {
     window._vskToggle = (el) => {
