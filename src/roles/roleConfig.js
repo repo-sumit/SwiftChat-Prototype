@@ -164,6 +164,9 @@ export const ROLE_PERMISSIONS = {
     canViewState: false,
     canApproveScholarship: false,
     canViewTeacherData: false,
+    canCreateBroadcast: false,
+    canCreateReminder: true,
+    canViewNotifications: true,
   },
   principal: {
     canMarkAttendance: false,
@@ -173,6 +176,9 @@ export const ROLE_PERMISSIONS = {
     canViewState: false,
     canApproveScholarship: true,
     canViewTeacherData: true,
+    canCreateBroadcast: false,
+    canCreateReminder: true,
+    canViewNotifications: true,
   },
   deo: {
     canMarkAttendance: false,
@@ -182,6 +188,9 @@ export const ROLE_PERMISSIONS = {
     canViewState: false,
     canApproveScholarship: true,
     canViewTeacherData: true,
+    canCreateBroadcast: false,
+    canCreateReminder: true,
+    canViewNotifications: true,
   },
   state_secretary: {
     canMarkAttendance: false,
@@ -191,6 +200,9 @@ export const ROLE_PERMISSIONS = {
     canViewState: true,
     canApproveScholarship: true,
     canViewTeacherData: true,
+    canCreateBroadcast: true,     // only state-tier may broadcast
+    canCreateReminder: true,
+    canViewNotifications: true,
   },
   parent: {
     canMarkAttendance: false,
@@ -200,6 +212,9 @@ export const ROLE_PERMISSIONS = {
     canViewState: false,
     canApproveScholarship: false,
     canViewTeacherData: false,
+    canCreateBroadcast: false,
+    canCreateReminder: true,
+    canViewNotifications: true,
   },
   crc: {
     canMarkAttendance: false,
@@ -209,6 +224,9 @@ export const ROLE_PERMISSIONS = {
     canViewState: false,
     canApproveScholarship: true,
     canViewTeacherData: false,
+    canCreateBroadcast: false,
+    canCreateReminder: true,
+    canViewNotifications: true,
   },
   pfms: {
     canMarkAttendance: false,
@@ -218,5 +236,8 @@ export const ROLE_PERMISSIONS = {
     canViewState: true,
     canApproveScholarship: false, // PFMS does not approve eligibility
     canViewTeacherData: false,
+    canCreateBroadcast: false,
+    canCreateReminder: true,
+    canViewNotifications: true,
   },
 }

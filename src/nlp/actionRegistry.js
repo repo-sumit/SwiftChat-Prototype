@@ -248,6 +248,52 @@ export const ACTIONS = {
     requiresConfirmation: true,
     run: () => ({ trigger: 'parent alert' }),
   },
+
+  // Notifications ─────────────────────────────────────────────────────────
+  OPEN_NOTIFICATIONS: {
+    id: 'OPEN_NOTIFICATIONS',
+    module: 'notifications',
+    label: 'Open Notifications',
+    // All authenticated roles may view their own notifications.
+    allowedRoles: ['teacher', 'principal', 'crc', 'deo', 'state_secretary', 'pfms', 'parent'],
+    requiredEntities: [],
+    requiresConfirmation: false,
+    run: () => ({ canvas: { type: 'notifications' } }),
+  },
+  CREATE_REMINDER: {
+    id: 'CREATE_REMINDER',
+    module: 'notifications',
+    label: 'Create Reminder',
+    allowedRoles: ['teacher', 'principal', 'crc', 'deo', 'state_secretary', 'pfms', 'parent'],
+    requiredEntities: [],
+    requiresConfirmation: false,
+    run: () => ({ canvas: { type: 'notifications', view: 'reminder' } }),
+  },
+  CREATE_BROADCAST_NOTIFICATION: {
+    id: 'CREATE_BROADCAST_NOTIFICATION',
+    module: 'notifications',
+    label: 'Create Broadcast Notification',
+    // Only state-tier may broadcast.
+    allowedRoles: ['state_secretary'],
+    requiredEntities: [],
+    requiresConfirmation: false,
+    run: ({ entities }) => ({
+      canvas: {
+        type: 'notifications',
+        view: 'broadcast',
+        prefill: entities?.broadcastPrefill || null,
+      },
+    }),
+  },
+  MARK_ALL_NOTIFICATIONS_READ: {
+    id: 'MARK_ALL_NOTIFICATIONS_READ',
+    module: 'notifications',
+    label: 'Mark All Notifications Read',
+    allowedRoles: ['teacher', 'principal', 'crc', 'deo', 'state_secretary', 'pfms', 'parent'],
+    requiredEntities: [],
+    requiresConfirmation: false,
+    run: () => ({ canvas: { type: 'notifications', op: 'mark_all_read' } }),
+  },
 }
 
 export function getAction(id) {

@@ -110,6 +110,25 @@ export const MODULES = [
     canvasView: null,
     fallbackPrompt: 'Which class or students should receive the alert?',
   },
+  {
+    id: 'notifications',
+    label: 'Notifications & Reminders',
+    aliases: [
+      'notification', 'notifications', 'notif',
+      'reminder', 'reminders', 'remind me', 'remind',
+      'alerts', 'announcement', 'broadcast',
+      'notification kholo', 'notification dikhao', 'reminder lagao',
+      'reminder add karo', 'reminder set karo', 'notif kholo',
+      'सूचना', 'रिमाइंडर', 'સૂચના',
+    ],
+    allowedRoles: ['teacher', 'principal', 'crc', 'deo', 'state_secretary', 'pfms', 'parent'],
+    actions: [
+      'OPEN_NOTIFICATIONS', 'CREATE_REMINDER',
+      'CREATE_BROADCAST_NOTIFICATION', 'MARK_ALL_NOTIFICATIONS_READ',
+    ],
+    canvasView: { type: 'notifications' },
+    fallbackPrompt: 'Open notifications, add a reminder, or create a broadcast?',
+  },
 ]
 
 export const MODULE_BY_ID = Object.fromEntries(MODULES.map(m => [m.id, m]))

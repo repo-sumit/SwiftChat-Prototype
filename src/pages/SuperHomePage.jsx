@@ -28,6 +28,7 @@ import { routeDataQuery, isQuestionShape } from '../nlp/dataQueryRouter'
 import { isRemoteEnabled } from '../nlp/groqInterpreter'
 import { aiAnswerCardHtml } from '../nlp/aiAnswerCard'
 import { aiAnalyticsCardHtml } from '../nlp/aiAnalyticsCard'
+import NotificationBell from '../components/notifications/NotificationBell'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -3103,6 +3104,8 @@ export default function SuperHomePage() {
           <span style={{ fontSize: 16, fontWeight: 700, lineHeight: '20px', color: '#0E0E0E', fontFamily: 'Montserrat, sans-serif' }}>VSK Gujarat</span>
 
           <div className="flex-1" />
+
+          <NotificationBell size={20} />
         </div>
 
         {/* Chat + artifact split */}

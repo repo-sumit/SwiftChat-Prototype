@@ -20,6 +20,22 @@ const kw = (...words) => new RegExp(`\\b(${words.join('|')})\\b`, 'i')
 // (e.g. SHOW_ABSENT_STUDENTS) so a phrase like "send parent alert to absent
 // students" routes to the parent-alert action.
 export const PATTERNS = [
+  // ── Notifications / reminders ───────────────────────────────────────────
+  // Broadcast creation (state-only) — must precede the generic "notification"
+  // rule so phrases like "send notification to teachers" route here.
+  { match: /\b(broadcast|send|bhejo|भेजो|create|banao)\b.*\b(notification|announcement|alert|message)\b/i, action: 'CREATE_BROADCAST_NOTIFICATION' },
+  { match: /\b(notification|announcement|alert)\b.*\b(send|bhejo|भेजो|create|banao|broadcast)\b/i, action: 'CREATE_BROADCAST_NOTIFICATION' },
+  // "Mark all read"
+  { match: /\b(mark\s*all\s*read|all\s*notifications?\s*read|sab\s*read|mark\s*as\s*read\s*all)\b/i, action: 'MARK_ALL_NOTIFICATIONS_READ' },
+  // Reminder creation — "remind me", "reminder lagao", "kal 10 baje reminder", etc.
+  { match: /\b(remind\s*me|set\s*(a\s*)?reminder|create\s*(a\s*)?reminder|add\s*(a\s*)?reminder)\b/i, action: 'CREATE_REMINDER' },
+  { match: /\breminder\b.*\b(lagao|laga\s*do|set\s*karo|add\s*karo|banao|create)\b/i, action: 'CREATE_REMINDER' },
+  { match: /\b(lagao|laga\s*do|set\s*karo|add\s*karo|banao|create)\b.*\breminder\b/i, action: 'CREATE_REMINDER' },
+  { match: /\b(kal|aaj|tomorrow|today)\b.*\bbaje\b.*\b(reminder|yaad)\b/i, action: 'CREATE_REMINDER' },
+  // Open notifications (broad — must come last in this block)
+  { match: /\b(notification|notifications|notif|alerts|announcements?)\b\s*(kholo|kholna|kholiye|dikhao|dekhao|open|show|view)?/i, action: 'OPEN_NOTIFICATIONS' },
+  { match: /(open|show|view)\s+(my\s+)?(notification|notifications|notif|alerts|announcements?)/i, action: 'OPEN_NOTIFICATIONS' },
+
   // ── Parent alerts (must precede `absent` so combined phrasings route here) ─
   { match: /parent\s*alert|notify\s*parent|whatsapp\s*alert|sms\s*alert|parent\s*ko\s*bhejo/i, action: 'SEND_PARENT_ALERT' },
 
