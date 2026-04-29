@@ -41,7 +41,6 @@ export const AUDIENCE_OPTIONS = [
   { id: 'pfms',       label: 'PFMS' },
   { id: 'deo',        label: 'DEO' },
   { id: 'parent',     label: 'Parent' },
-  { id: 'not_state',  label: 'Not a State (everyone except State)' },
 ]
 
 // State-tier roles used by targeting (`not_state` excludes these).
